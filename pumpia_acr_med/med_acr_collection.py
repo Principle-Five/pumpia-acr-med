@@ -7,7 +7,7 @@ from pumpia.module_handling.module_collections import (OutputFrame,
 from pumpia.module_handling.in_outs.viewer_ios import MonochromeDicomViewerIO
 from pumpia.widgets.viewers import BaseViewer
 
-from .modules.sub_snr import SubSNR
+from .modules.sub_snr import MedACRSubSNR
 from .acr_med_context import MedACRContextManagerGenerator
 
 
@@ -17,7 +17,7 @@ class MedACRrptCollection(BaseCollection):
     viewer1 = MonochromeDicomViewerIO(row=0, column=0)
     viewer2 = MonochromeDicomViewerIO(row=0, column=1)
 
-    snr = SubSNR(verbose_name="SNR")
+    snr = MedACRSubSNR(verbose_name="SNR")
 
     snr_output = OutputFrame(verbose_name="SNR Output")
 

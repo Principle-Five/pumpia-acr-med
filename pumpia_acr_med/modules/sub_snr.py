@@ -1,9 +1,8 @@
 """
 Subtraction SNR module for medium ACR phantom
 """
-
-import numpy as np
 import math
+import numpy as np
 
 from pumpia.module_handling.modules import PhantomModule
 from pumpia.module_handling.in_outs.roi_ios import InputEllipseROI
@@ -20,7 +19,10 @@ from pumpia.file_handling.dicom_tags import MRTags
 from ..acr_med_context import MedACRContextManagerGenerator, MedACRContext
 
 
-class SubSNR(PhantomModule):
+class MedACRSubSNR(PhantomModule):
+    """
+    Module for subtraction method SNR on medium ACR phantom.
+    """
     context_manager_generator = MedACRContextManagerGenerator()
     viewer1 = MonochromeDicomViewerIO(row=0, column=0)
     viewer2 = MonochromeDicomViewerIO(row=0, column=1, allow_changing_rois=False)
