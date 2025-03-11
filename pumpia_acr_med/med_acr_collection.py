@@ -12,6 +12,9 @@ from .acr_med_context import MedACRContextManagerGenerator
 
 
 class MedACRrptCollection(BaseCollection):
+    """
+    Collection for medium ACR phantom with repeated scans.
+    """
     context_manager_generator = MedACRContextManagerGenerator()
 
     viewer1 = MonochromeDicomViewerIO(row=0, column=0)
