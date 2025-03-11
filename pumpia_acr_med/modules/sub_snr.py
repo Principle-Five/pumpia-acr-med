@@ -82,10 +82,10 @@ class SubSNR(PhantomModule):
 
     def analyse(self, batch: bool = False):
         if self.signal_roi1.roi is not None and self.signal_roi2.roi is not None:
-            roi = self.signal_roi1.roi
+            roi1 = self.signal_roi1.roi
             roi2 = self.signal_roi2.roi
-            roi_sum = roi.pixel_values + roi2.pixel_values
-            roi_sub = np.array(roi.pixel_values) - np.array(roi2.pixel_values)
+            roi_sum = roi1.pixel_values + roi2.pixel_values
+            roi_sub = np.array(roi1.pixel_values) - np.array(roi2.pixel_values)
             sum_roi = np.mean(roi_sum)
             if isinstance(sum_roi, float):
                 self.signal.value = sum_roi
