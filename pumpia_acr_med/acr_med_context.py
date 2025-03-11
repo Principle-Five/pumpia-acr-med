@@ -57,10 +57,6 @@ class MedACRContext(PhantomContext):
         self.circle_insert_side: SideType = circle_insert_side
         self.inserts_slice: Literal[0] | Literal[10] = inserts_slice
 
-        print(self.res_insert_side)
-        print(self.circle_insert_side)
-        print(self.inserts_slice)
-
 
 class MedACRContextManager(PhantomContextManager):
     """
