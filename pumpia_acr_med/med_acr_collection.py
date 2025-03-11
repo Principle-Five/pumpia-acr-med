@@ -24,7 +24,8 @@ class MedACRrptCollection(BaseCollection):
     def load_outputs(self):
         self.snr_output.register_output(self.snr.signal)
         self.snr_output.register_output(self.snr.noise)
-        self.snr_output.register_output(self.snr.SNR)
+        self.snr_output.register_output(self.snr.snr)
+        self.snr_output.register_output(self.snr.cor_snr)
 
     def on_image_load(self, viewer: BaseViewer) -> None:
         if viewer is self.viewer1:
