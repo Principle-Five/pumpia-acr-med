@@ -155,14 +155,14 @@ class MedACRSubSNR(PhantomModule):
 
                 if self.os_cor_bool.value:
                     try:
-                        im_os = image.get_tag(MRTags.OversamplingPhase)
+                        im_os = image.get_tag(MRTags.NumberOfPhaseEncodingSteps)
                         try:
                             im_os = float(im_os)  # type: ignore
                         except (ValueError, TypeError):
                             im_os = 0
                     except KeyError:
                         im_os = 0
-                    os_cor = 1 / math.sqrt(1 + im_os)
+                    os_cor = 1 / math.sqrt(im_os)
                     self.oversampling_cor.value = os_cor
 
                 cor_snr = snr * px_cor * bw_cor * avg_cor * os_cor
