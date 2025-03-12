@@ -32,12 +32,12 @@ class MedACRSubSNR(PhantomModule):
     bw_cor_bool = BoolInput(verbose_name="Bandwidth Correction")
     pix_size_bool = BoolInput(verbose_name="Pixel Size Correction")
     avg_cor_bool = BoolInput(verbose_name="Averages Correction")
-    os_cor_bool = BoolInput(verbose_name="Oversampling Correction")
+    pe_cor_bool = BoolInput(verbose_name="Phase Encode Correction")
 
     slice_used = IntOutput()
     im_bw = FloatOutput(verbose_name="Image Bandwidth (Hz/px)")
     pixel_size_cor = FloatOutput(verbose_name="Pixel Size Correction")
-    oversampling_cor = FloatOutput(verbose_name="Oversampling Correction")
+    pe_cor = FloatOutput(verbose_name="Phase Encode Correction")
     avg_cor = FloatOutput(verbose_name="Averages Correction")
     signal = FloatOutput()
     noise = FloatOutput()
@@ -121,7 +121,7 @@ class MedACRSubSNR(PhantomModule):
                 px_cor = 1
                 bw_cor = 1
                 avg_cor = 1
-                os_cor = 1
+                pe_cor = 1
 
                 if self.pix_size_bool.value:
                     pix_size = image.pixel_size
@@ -153,18 +153,18 @@ class MedACRSubSNR(PhantomModule):
                     avg_cor = 1 / math.sqrt(im_av)
                     self.avg_cor.value = avg_cor
 
-                if self.os_cor_bool.value:
+                if self.pe_cor_bool.value:
                     try:
-                        im_os = image.get_tag(MRTags.NumberOfPhaseEncodingSteps)
+                        im_pe = image.get_tag(MRTags.NumberOfPhaseEncodingSteps)
                         try:
-                            im_os = float(im_os)  # type: ignore
+                            im_pe = float(im_pe)  # type: ignore
                         except (ValueError, TypeError):
-                            im_os = 0
+                            im_pe = 0
                     except KeyError:
-                        im_os = 0
-                    os_cor = 1 / math.sqrt(im_os)
-                    self.oversampling_cor.value = os_cor
+                        im_pe = 0
+                    pe_cor = 1 / math.sqrt(im_pe)
+                    self.pe_cor.value = pe_cor
 
-                cor_snr = snr * px_cor * bw_cor * avg_cor * os_cor
+                cor_snr = snr * px_cor * bw_cor * avg_cor * pe_cor
 
             self.cor_snr.value = float(cor_snr)
