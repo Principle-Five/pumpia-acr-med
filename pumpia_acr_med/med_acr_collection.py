@@ -10,7 +10,7 @@ from pumpia.widgets.viewers import BaseViewer
 
 from .acr_med_context import MedACRContextManagerGenerator
 from .modules.sub_snr import MedACRSubSNR
-from .modules.uniformity import ACRUniformity
+from .modules.uniformity import MedACRUniformity
 
 
 class MedACRrptCollection(BaseCollection):
@@ -24,8 +24,8 @@ class MedACRrptCollection(BaseCollection):
 
     snr = MedACRSubSNR(verbose_name="SNR")
 
-    uniformity1 = ACRUniformity(verbose_name="Uniformity")
-    uniformity2 = ACRUniformity(verbose_name="Uniformity")
+    uniformity1 = MedACRUniformity(verbose_name="Uniformity")
+    uniformity2 = MedACRUniformity(verbose_name="Uniformity")
 
     snr_output = OutputFrame(verbose_name="SNR Output")
     image1_output = OutputFrame(verbose_name="Image 1 Results")
