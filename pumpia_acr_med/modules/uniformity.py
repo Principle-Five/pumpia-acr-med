@@ -19,7 +19,7 @@ from ..acr_med_context import MedACRContextManagerGenerator, MedACRContext
 LOW_PASS_KERNEL = np.array([[1, 2, 1], [2, 4, 2], [1, 2, 1]]) / 16
 
 
-class ACRUniformity(PhantomModule):
+class MedACRUniformity(PhantomModule):
     """
     Integral uniformity module for medium ACR phantom.
     """
@@ -32,7 +32,7 @@ class ACRUniformity(PhantomModule):
     slice_used = IntOutput()
     uniformity = FloatOutput(verbose_name="Uniformity (%)")
 
-    uniformity_roi = InputEllipseROI("SNR ROI1")
+    uniformity_roi = InputEllipseROI("Uniformity ROI")
 
     def draw_rois(self, context: MedACRContext, batch: bool = False) -> None:
         if isinstance(self.viewer.image, Instance):
