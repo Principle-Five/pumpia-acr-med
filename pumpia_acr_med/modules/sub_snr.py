@@ -155,13 +155,23 @@ class MedACRSubSNR(PhantomModule):
 
                 if self.pe_cor_bool.value:
                     try:
-                        im_pe = image.get_tag(MRTags.NumberOfPhaseEncodingSteps)
+                        im_pe = float(
+                            image.get_tag(MRTags.NumberOfPhaseEncodingSteps))  # type: ignore
+                    except (KeyError, ValueError, TypeError):
+                        im_pe = 1
+
+                    if im_pe == 1:
                         try:
-                            im_pe = float(im_pe)  # type: ignore
-                        except (ValueError, TypeError):
-                            im_pe = 0
-                    except KeyError:
-                        im_pe = 0
+                            if image.get_tag(MRTags.InPlanePhaseEncodingDirection) == "ROW":
+                                num = int(
+                                    image.get_tag(MRTags.Rows))  # type: ignore
+                            else:
+                                num = int(
+                                    image.get_tag(MRTags.Columns))  # type: ignore
+                            im_pe = float(
+                                image.get_tag(MRTags.PercentSampling)) * num  # type: ignore
+                        except (KeyError, ValueError, TypeError):
+                            im_pe = 1
                     pe_cor = 1 / math.sqrt(im_pe)
                     self.pe_cor.value = pe_cor
 
