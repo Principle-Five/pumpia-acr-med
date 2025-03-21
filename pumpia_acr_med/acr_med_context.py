@@ -10,6 +10,7 @@ import numpy as np
 
 from pumpia.file_handling.dicom_structures import Series, Instance
 from pumpia.module_handling.manager import Manager
+from pumpia.image_handling.roi_structures import RectangleROI, PointROI
 from pumpia.utilities.typing import DirectionType, SideType
 from pumpia.widgets.typing import ScreenUnits, Cursor, Padding, Relief, TakeFocusValue
 from pumpia.widgets.context_managers import (PhantomContextManager,
@@ -174,6 +175,12 @@ class MedACRContextManager(PhantomContextManager):
         self.circle_insert_label.grid(column=0, row=2, sticky="nsew")
         self.circle_insert_combo.grid(column=1, row=2, sticky="nsew")
 
+        self.show_boxes_var = tk.BooleanVar(self)
+        self.show_boxes_button = ttk.Checkbutton(self.inserts_frame,
+                                                 text="Show Boxes",
+                                                 variable=self.show_boxes_var)
+        self.show_boxes_button.grid(column=0, row=3, columnspan=2, sticky="nsew")
+
         if self.direction[0].lower() == "h":
             self.auto_phantom_manager.grid(column=0, row=0, sticky="nsew")
             self.inserts_frame.grid(column=1, row=0, sticky="nsew")
@@ -271,6 +278,7 @@ class MedACRContextManager(PhantomContextManager):
 
         res_insert_opp = int(res_insert_opp)
 
+
         if res_insert_opp == 0 or res_insert_opp == 1:
             five_box_xmin = round(xcent - five_box_offset_x - five_box_width)
             five_box_xmax = round(xcent - five_box_offset_x) + 1
@@ -321,6 +329,68 @@ class MedACRContextManager(PhantomContextManager):
                 circle_insert_side = "bottom"
             else:
                 circle_insert_side = "top"
+
+        if self.show_boxes_var.get():
+            top_roi = RectangleROI(image,
+                                   top_box_xmin,
+                                   top_box_ymin,
+                                   top_box_xmax,
+                                   top_box_ymax,
+                                   replace=True,
+                                   name="Top")
+            self.manager.add_roi(top_roi)
+
+            bottom_roi = RectangleROI(image,
+                                      bottom_box_xmin,
+                                      bottom_box_ymin,
+                                      bottom_box_xmax,
+                                      bottom_box_ymax,
+                                      replace=True,
+                                      name="Bottom")
+            self.manager.add_roi(bottom_roi)
+
+            left_roi = RectangleROI(image,
+                                    left_box_xmin,
+                                    left_box_ymin,
+                                    left_box_xmax,
+                                    left_box_ymax,
+                                    replace=True,
+                                    name="Left")
+            self.manager.add_roi(left_roi)
+
+            right_roi = RectangleROI(image,
+                                     right_box_xmin,
+                                     right_box_ymin,
+                                     right_box_xmax,
+                                     right_box_ymax,
+                                     replace=True,
+                                     name="Right")
+            self.manager.add_roi(right_roi)
+
+            five_roi = RectangleROI(image,
+                                     five_box_xmin,
+                                     five_box_ymin,
+                                     five_box_xmax,
+                                     five_box_ymax,
+                                     replace=True,
+                                     name="Diagonal 1")
+            self.manager.add_roi(five_roi)
+
+            six_roi = RectangleROI(image,
+                                     six_box_xmin,
+                                     six_box_ymin,
+                                     six_box_xmax,
+                                     six_box_ymax,
+                                     replace=True,
+                                     name="Diagonal 2")
+            self.manager.add_roi(six_roi)
+
+            cent = PointROI(image,
+                            round(boundary_context.xcent),
+                            round(boundary_context.ycent),
+                            name="Centre",
+                            replace=True)
+            self.manager.add_roi(cent)
 
         self.res_insert_var.set(inv_side_map[res_insert_side])
         self.circle_insert_var.set(inv_side_map[circle_insert_side])
