@@ -21,14 +21,6 @@ ROI_WIDTH = 100
 BOTTOM_OFFSET = 0
 TOP_OFFSET = -4.5
 
-def flat_top_gauss_offset(pos: np.ndarray,
-                            a: float,
-                            b: float,
-                            c: float,
-                            amp: float,
-                            offset:float):
-    return flat_top_gauss(pos,a,b,c,amp)+offset
-
 class MedACRSliceWidth(PhantomModule):
     """
     Calculates slice width for the medium ACR phantom by fitting to a flat top gaussian
@@ -163,7 +155,7 @@ class MedACRSliceWidth(PhantomModule):
                         np.max(top_prof) - np.min(top_prof),
                         np.min(top_prof))
             top_indeces = np.indices(top_prof.shape)[0]
-            top_fit, _ = curve_fit(flat_top_gauss_offset,
+            top_fit, _ = curve_fit(flat_top_gauss,
                                    top_indeces,
                                    top_prof,
                                    top_init)
@@ -176,7 +168,7 @@ class MedACRSliceWidth(PhantomModule):
                         np.max(bottom_prof) - np.min(bottom_prof),
                         np.min(bottom_prof))
             bottom_indeces = np.indices(bottom_prof.shape)[0]
-            bottom_fit, _ = curve_fit(flat_top_gauss_offset,
+            bottom_fit, _ = curve_fit(flat_top_gauss,
                                    bottom_indeces,
                                    bottom_prof,
                                    bottom_init)
