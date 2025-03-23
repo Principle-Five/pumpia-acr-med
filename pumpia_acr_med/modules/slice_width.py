@@ -13,7 +13,8 @@ from pumpia.module_handling.in_outs.viewer_ios import MonochromeDicomViewerIO
 from pumpia.module_handling.in_outs.simple import FloatInput, PercInput,  FloatOutput, StringOutput
 from pumpia.image_handling.roi_structures import RectangleROI
 from pumpia.file_handling.dicom_structures import Series, Instance
-from pumpia.utilities.feature_utils import nth_max_widest_peak, flat_top_gauss
+from pumpia.utilities.array_utils import nth_max_widest_peak
+from pumpia.utilities.feature_utils import flat_top_gauss
 
 from ..acr_med_context import MedACRContextManagerGenerator, MedACRContext
 
@@ -31,10 +32,10 @@ class MedACRSliceWidth(PhantomModule):
 
     viewer = MonochromeDicomViewerIO(row=0, column=0)
 
-    tan_theta = FloatInput(0.1, verbose_name="Tan of wedge angle")
+    tan_theta = FloatInput(0.1, verbose_name="Tan of ramp angle")
     max_perc = PercInput(50, verbose_name="Width position (% of max)")
 
-    ramp_dir = StringOutput(verbose_name="Wedge Direction", reset_on_analysis = False)
+    ramp_dir = StringOutput(verbose_name="Ramp Direction", reset_on_analysis = False)
 
     expected_width = FloatOutput()
     top_ramp_width = FloatOutput()
