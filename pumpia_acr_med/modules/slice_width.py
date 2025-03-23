@@ -5,6 +5,8 @@ import math
 import numpy as np
 from scipy.optimize import curve_fit
 
+import matplotlib.pyplot as plt
+
 from pumpia.module_handling.modules import PhantomModule
 from pumpia.module_handling.in_outs.roi_ios import BaseInputROI, InputRectangleROI
 from pumpia.module_handling.in_outs.viewer_ios import MonochromeDicomViewerIO
@@ -16,10 +18,10 @@ from pumpia.utilities.feature_utils import nth_max_widest_peak, flat_top_gauss
 from ..acr_med_context import MedACRContextManagerGenerator, MedACRContext
 
 # ROI sizes in mm
-ROI_HEIGHT = 3.5
-ROI_WIDTH = 100
-BOTTOM_OFFSET = 0
-TOP_OFFSET = -4.5
+ROI_HEIGHT = 3
+ROI_WIDTH = 120
+BOTTOM_OFFSET = 1
+TOP_OFFSET = -3
 
 class MedACRSliceWidth(PhantomModule):
     """
@@ -145,6 +147,7 @@ class MedACRSliceWidth(PhantomModule):
             self.expected_width.value = self.viewer.image.pixel_size[0]
 
             divisor = 100 / self.max_perc.value
+            c_coeff = 2 * math.sqrt(2 * math.log(divisor))
 
             top_fwhm_peak = nth_max_widest_peak(top_prof, divisor)
             bottom_fwhm_peak = nth_max_widest_peak(bottom_prof, divisor)
@@ -156,11 +159,10 @@ class MedACRSliceWidth(PhantomModule):
                         np.min(top_prof))
             top_indeces = np.indices(top_prof.shape)[0]
             top_fit, _ = curve_fit(flat_top_gauss,
-                                   top_indeces,
-                                   top_prof,
-                                   top_init)
-
-
+                                top_indeces,
+                                top_prof,
+                                top_init)
+            top_fwhm = abs(top_fit[1] - top_fit[0]) + (c_coeff * top_fit[2])
 
             bottom_init = (bottom_fwhm_peak.minimum,
                         bottom_fwhm_peak.maximum,
@@ -169,14 +171,10 @@ class MedACRSliceWidth(PhantomModule):
                         np.min(bottom_prof))
             bottom_indeces = np.indices(bottom_prof.shape)[0]
             bottom_fit, _ = curve_fit(flat_top_gauss,
-                                   bottom_indeces,
-                                   bottom_prof,
-                                   bottom_init)
-
-            c_coeff = 2 * math.sqrt(2 * math.log(divisor))
-
-            top_fwhm = abs(top_fit[1] - top_fit[0]) + c_coeff * top_fit[2]
-            bottom_fwhm = abs(bottom_fit[1] - bottom_fit[0]) + c_coeff * bottom_fit[2]
+                                bottom_indeces,
+                                bottom_prof,
+                                bottom_init)
+            bottom_fwhm = abs(bottom_fit[1] - bottom_fit[0]) + (c_coeff * bottom_fit[2])
 
             tan_theta = self.tan_theta.value
 
@@ -187,3 +185,81 @@ class MedACRSliceWidth(PhantomModule):
             self.bottom_ramp_width.value = bottom_width
 
             self.slice_width.value = math.sqrt(top_width * bottom_width)
+
+    def load_commands(self):
+        self.register_command("Show Profiles", self.show_profiles)
+
+    def show_profiles(self):
+        """
+        Shows the ROI profiles
+        """
+        if (self.top_ramp.roi is not None
+            and self.bottom_ramp.roi is not None
+                and self.viewer.image is not None):
+            if self.ramp_dir.value == "Vertical":
+                top_prof = self.top_ramp.roi.v_profile
+                bottom_prof = self.bottom_ramp.roi.v_profile
+                pix_size = self.viewer.image.pixel_size[1]
+            else:
+                top_prof = self.top_ramp.roi.h_profile
+                bottom_prof = self.bottom_ramp.roi.h_profile
+                pix_size = self.viewer.image.pixel_size[2]
+
+            tan_theta = self.tan_theta.value
+
+            divisor = 100 / self.max_perc.value
+
+            top_indeces = np.indices(top_prof.shape)[0]
+            bottom_indeces = np.indices(bottom_prof.shape)[0]
+            top_x_locs = top_indeces*tan_theta*pix_size
+            bottom_x_locs = bottom_indeces*tan_theta*pix_size
+
+            plt.clf()
+            plt.plot(top_x_locs, top_prof, label="Top Profile")
+
+            try:
+
+                top_fwhm_peak = nth_max_widest_peak(top_prof, divisor)
+                top_init = (top_fwhm_peak.minimum,
+                            top_fwhm_peak.maximum,
+                            (top_fwhm_peak.maximum-top_fwhm_peak.minimum)/4,
+                            np.max(top_prof) - np.min(top_prof),
+                            np.min(top_prof))
+
+                top_fit, _ = curve_fit(flat_top_gauss,
+                                    top_indeces,
+                                    top_prof,
+                                    top_init)
+
+                top_fitted = flat_top_gauss(top_indeces, *top_fit)
+                plt.plot(top_x_locs, top_fitted,
+                        label = "Top Fit")
+
+            except RuntimeError:
+                pass
+
+            plt.plot(bottom_x_locs, bottom_prof, label="Bottom Profile")
+
+            try:
+                bottom_fwhm_peak = nth_max_widest_peak(bottom_prof, divisor)
+                bottom_init = (bottom_fwhm_peak.minimum,
+                            bottom_fwhm_peak.maximum,
+                            (bottom_fwhm_peak.maximum-bottom_fwhm_peak.minimum)/4,
+                            np.max(bottom_prof) - np.min(bottom_prof),
+                            np.min(bottom_prof))
+
+                bottom_fit, _ = curve_fit(flat_top_gauss,
+                                    bottom_indeces,
+                                    bottom_prof,
+                                    bottom_init)
+                bottom_fitted = flat_top_gauss(bottom_indeces, *bottom_fit)
+                plt.plot(bottom_x_locs, bottom_fitted,
+                        label = "Bottom Fit")
+            except RuntimeError:
+                pass
+
+            plt.legend()
+            plt.xlabel("Position (Pixels)")
+            plt.ylabel("Value")
+            plt.title("ROI Profiles")
+            plt.show()
