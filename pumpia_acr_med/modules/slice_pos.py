@@ -1,5 +1,7 @@
 """
-Slice postition for Medium ACR Phantom
+Slice postition for Medium ACR Phantom.
+
+Slice position is given in absolute offset, not the distance measured by the bars.
 """
 import numpy as np
 
@@ -17,25 +19,29 @@ from ..acr_med_context import MedACRContextManagerGenerator, MedACRContext
 
 ROI_OFFSET = 55
 ROI_WIDTH = 2
-ROI_HEIGHT= 10
+ROI_HEIGHT = 10
 LEFT_OFFSET = -5
 RIGHT_OFFSET = 1
 
 
 class MedACRSlicePosition(PhantomModule):
     """
-    Calculates slice position for the medium ACR phantom
+    Calculates slice position for the medium ACR phantom.
+
+    Slice position is given in absolute offset, not the distance measured by the bars.
     """
     context_manager_generator = MedACRContextManagerGenerator()
 
     viewer1 = MonochromeDicomViewerIO(row=0, column=0)
     viewer2 = MonochromeDicomViewerIO(row=0, column=1, allow_drag_drop=False)
 
-    wedge_dir= StringOutput(verbose_name="Wedge Direction", reset_on_analysis = False)
+    wedge_dir = StringOutput(verbose_name="Wedge Direction", reset_on_analysis=False)
     wedge_side = StringOutput(reset_on_analysis=False)
 
-    slice_1_pos = FloatOutput(verbose_name="Slice 1 position")
-    slice_11_pos = FloatOutput(verbose_name="Slice 11 position")
+    slice_1_bar_diff = FloatOutput(verbose_name="Slice 1 Bar Length Difference (mm)")
+    slice_1_pos = FloatOutput(verbose_name="Slice 1 position (mm)")
+    slice_11_bar_diff = FloatOutput(verbose_name="Slice 11 Bar Length Difference (mm)")
+    slice_11_pos = FloatOutput(verbose_name="Slice 11 position (mm)")
 
     slice_1_left_wedge = InputRectangleROI()
     slice_1_right_wedge = InputRectangleROI()
@@ -46,7 +52,7 @@ class MedACRSlicePosition(PhantomModule):
 
         if isinstance(self.viewer1.image, Instance):
             image = self.viewer1.image.series
-        elif  isinstance(self.viewer1.image, Series):
+        elif isinstance(self.viewer1.image, Series):
             image = self.viewer1.image
         else:
             return
@@ -57,7 +63,6 @@ class MedACRSlicePosition(PhantomModule):
         else:
             image1 = image.instances[0]
             image2 = image.instances[10]
-
 
         self.viewer1.load_image(image1)
         self.viewer2.load_image(image2)
@@ -75,32 +80,31 @@ class MedACRSlicePosition(PhantomModule):
 
             if context.res_insert_side == "right":
                 self.wedge_side.value = "left"
-                left_xmin = right_xmin = round(context.xcent - box_width -ROI_OFFSET)
-                left_xmax = right_xmax = round(context.xcent + box_width -ROI_OFFSET)
+                left_xmin = right_xmin = round(context.xcent - box_width - ROI_OFFSET)
+                left_xmax = right_xmax = round(context.xcent + box_width - ROI_OFFSET)
                 left_ymin = round(context.ycent + left_pix_offset)
                 left_ymax = round(context.ycent + left_pix_offset + box_height)
                 right_ymin = round(context.ycent + right_pix_offset)
                 right_ymax = round(context.ycent + right_pix_offset + box_height)
             else:
                 self.wedge_side.value = "right"
-                left_xmin = right_xmin = round(context.xcent - box_width +ROI_OFFSET)
-                left_xmax = right_xmax = round(context.xcent + box_width +ROI_OFFSET)
+                left_xmin = right_xmin = round(context.xcent - box_width + ROI_OFFSET)
+                left_xmax = right_xmax = round(context.xcent + box_width + ROI_OFFSET)
                 left_ymin = round(context.ycent - left_pix_offset - box_height)
                 left_ymax = round(context.ycent - left_pix_offset)
                 right_ymin = round(context.ycent - right_pix_offset - box_height)
                 right_ymax = round(context.ycent - right_pix_offset)
         else:
             self.wedge_dir.value = "Vertical"
-            box_height = ROI_HEIGHT/ pixel_height
+            box_height = ROI_HEIGHT / pixel_height
             box_width = ROI_WIDTH / pixel_width
             left_pix_offset = LEFT_OFFSET / pixel_width
             right_pix_offset = RIGHT_OFFSET / pixel_width
 
-
             if context.res_insert_side == "bottom":
                 self.wedge_side.value = "top"
-                left_ymin = right_ymin = round(context.ycent - box_height-ROI_OFFSET  )
-                left_ymax = right_ymax = round(context.ycent + box_height-ROI_OFFSET)
+                left_ymin = right_ymin = round(context.ycent - box_height - ROI_OFFSET)
+                left_ymax = right_ymax = round(context.ycent + box_height - ROI_OFFSET)
 
                 left_xmin = round(context.xcent + left_pix_offset)
                 left_xmax = round(context.xcent + left_pix_offset + box_width)
@@ -108,42 +112,42 @@ class MedACRSlicePosition(PhantomModule):
                 right_xmax = round(context.xcent + right_pix_offset + box_width)
             else:
                 self.wedge_side.value = "bottom"
-                left_ymin = right_ymin = round(context.ycent - box_width+ROI_OFFSET  )
-                left_ymax = right_ymax = round(context.ycent + box_width +ROI_OFFSET)
+                left_ymin = right_ymin = round(context.ycent - box_width + ROI_OFFSET)
+                left_ymax = right_ymax = round(context.ycent + box_width + ROI_OFFSET)
                 left_xmin = round(context.xcent - left_pix_offset - box_width)
                 left_xmax = round(context.xcent - left_pix_offset)
                 right_xmin = round(context.xcent - right_pix_offset - box_width)
                 right_xmax = round(context.xcent - right_pix_offset)
 
         left_roi = RectangleROI(image1,
-                                    left_xmin,
-                                    left_ymin,
-                                    left_xmax,
-                                    left_ymax,
-                                    slice_num=image1.current_slice,
-                                    replace=True)
+                                left_xmin,
+                                left_ymin,
+                                left_xmax,
+                                left_ymax,
+                                slice_num=image1.current_slice,
+                                replace=True)
         self.slice_1_left_wedge.register_roi(left_roi)
         if self.slice_1_left_wedge.roi is not None:
             self.slice_11_left_wedge.register_roi(
                 self.slice_1_left_wedge.roi.copy_to_image(
                     image2,
-                                                    image2.current_slice,
-                                                    replace=True))
+                    image2.current_slice,
+                    replace=True))
 
         right_roi = RectangleROI(image1,
-                                    right_xmin,
-                                    right_ymin,
-                                    right_xmax,
-                                    right_ymax,
-                                    slice_num=image1.current_slice,
-                                    replace=True)
+                                 right_xmin,
+                                 right_ymin,
+                                 right_xmax,
+                                 right_ymax,
+                                 slice_num=image1.current_slice,
+                                 replace=True)
         self.slice_1_right_wedge.register_roi(right_roi)
         if self.slice_1_right_wedge.roi is not None:
             self.slice_11_right_wedge.register_roi(
                 self.slice_1_right_wedge.roi.copy_to_image(
                     image2,
-                                                    image2.current_slice,
-                                                    replace=True))
+                    image2.current_slice,
+                    replace=True))
 
     def post_roi_register(self, roi_input: BaseInputROI):
         if (roi_input.roi is not None
@@ -161,7 +165,7 @@ class MedACRSlicePosition(PhantomModule):
         if (self.slice_11_left_wedge.roi is not None
             and self.slice_11_right_wedge.roi is not None
             and self.slice_1_left_wedge.roi is not None
-            and self.slice_1_right_wedge.roi is not None):
+                and self.slice_1_right_wedge.roi is not None):
             if self.wedge_dir == "horizontal":
                 slice_11_left_prof = self.slice_11_left_wedge.roi.h_profile
                 slice_11_right_prof = self.slice_11_right_wedge.roi.h_profile
@@ -176,9 +180,9 @@ class MedACRSlicePosition(PhantomModule):
                 pix_size = self.slice_1_right_wedge.roi.image.pixel_size[1]
 
             slice_11_left_nth_max = nth_max_positions(slice_11_left_prof, 2)
-            slice_11_right_nth_max= nth_max_positions(slice_11_right_prof, 2)
-            slice_1_left_nth_max= nth_max_positions(slice_1_left_prof, 2)
-            slice_1_right_nth_max= nth_max_positions(slice_1_right_prof, 2)
+            slice_11_right_nth_max = nth_max_positions(slice_11_right_prof, 2)
+            slice_1_left_nth_max = nth_max_positions(slice_1_left_prof, 2)
+            slice_1_right_nth_max = nth_max_positions(slice_1_right_prof, 2)
 
             if self.wedge_side.value == "left" or self.wedge_side.value == "top":
                 slice_11_left_hm = slice_11_left_nth_max[0]
@@ -191,9 +195,10 @@ class MedACRSlicePosition(PhantomModule):
                 slice_1_left_hm = -slice_1_left_nth_max[-1]
                 slice_1_right_hm = -slice_1_right_nth_max[-1]
 
-            self.slice_1_pos.value  = (slice_1_right_hm-slice_1_left_hm)*pix_size/2
-            self.slice_11_pos.value  = (slice_11_right_hm-slice_11_left_hm)*pix_size/2
-
+            self.slice_1_bar_diff.value = (slice_1_right_hm - slice_1_left_hm) * pix_size
+            self.slice_1_pos.value = self.slice_1_bar_diff.value / 2
+            self.slice_11_bar_diff.value = (slice_11_right_hm - slice_11_left_hm) * pix_size
+            self.slice_11_pos.value = self.slice_11_bar_diff.value / 2
 
     def load_commands(self):
         self.register_command("Show Profiles", self.show_profiles)
@@ -205,7 +210,7 @@ class MedACRSlicePosition(PhantomModule):
         if (self.slice_11_left_wedge.roi is not None
             and self.slice_11_right_wedge.roi is not None
             and self.slice_1_left_wedge.roi is not None
-            and self.slice_1_right_wedge.roi is not None):
+                and self.slice_1_right_wedge.roi is not None):
             if self.wedge_dir == "horizontal":
                 slice_11_left_prof = self.slice_11_left_wedge.roi.h_profile
                 slice_11_right_prof = self.slice_11_right_wedge.roi.h_profile
@@ -219,7 +224,7 @@ class MedACRSlicePosition(PhantomModule):
                 slice_1_right_prof = self.slice_1_right_wedge.roi.v_profile
                 pix_size = self.slice_1_right_wedge.roi.image.pixel_size[1]
 
-            locs = np.indices(slice_11_left_prof.shape)[0]*pix_size/2
+            locs = np.indices(slice_11_left_prof.shape)[0] * pix_size / 2
 
             plt.clf()
             plt.plot(locs, slice_1_left_prof, label="Slice 1 Left Wedge")

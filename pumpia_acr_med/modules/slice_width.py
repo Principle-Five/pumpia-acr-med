@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 from pumpia.module_handling.modules import PhantomModule
 from pumpia.module_handling.in_outs.roi_ios import BaseInputROI, InputRectangleROI
 from pumpia.module_handling.in_outs.viewer_ios import MonochromeDicomViewerIO
-from pumpia.module_handling.in_outs.simple import FloatInput, PercInput,  FloatOutput, StringOutput
+from pumpia.module_handling.in_outs.simple import FloatInput, PercInput, FloatOutput, StringOutput
 from pumpia.image_handling.roi_structures import RectangleROI
 from pumpia.file_handling.dicom_structures import Series, Instance
 from pumpia.utilities.array_utils import nth_max_widest_peak
@@ -24,9 +24,13 @@ ROI_WIDTH = 120
 BOTTOM_OFFSET = 1
 TOP_OFFSET = -3
 
+
 class MedACRSliceWidth(PhantomModule):
     """
-    Calculates slice width for the medium ACR phantom by fitting to a flat top gaussian
+    Calculates slice width for the medium ACR phantom by fitting to a flat top gaussian.
+
+    Overall slice width is calculated by taking the geometric mean
+    of the top and bottom ramp widths.
     """
     context_manager_generator = MedACRContextManagerGenerator()
 
@@ -35,12 +39,12 @@ class MedACRSliceWidth(PhantomModule):
     tan_theta = FloatInput(0.1, verbose_name="Tan of ramp angle")
     max_perc = PercInput(50, verbose_name="Width position (% of max)")
 
-    ramp_dir = StringOutput(verbose_name="Ramp Direction", reset_on_analysis = False)
+    ramp_dir = StringOutput(verbose_name="Ramp Direction", reset_on_analysis=False)
 
-    expected_width = FloatOutput()
-    top_ramp_width = FloatOutput()
-    bottom_ramp_width = FloatOutput()
-    slice_width = FloatOutput()
+    expected_width = FloatOutput(verbose_name="Expected Width (mm)")
+    top_ramp_width = FloatOutput(verbose_name="Top Ramp Width (mm)")
+    bottom_ramp_width = FloatOutput(verbose_name="Bottom Ramp Width (mm)")
+    slice_width = FloatOutput(verbose_name="Slice Width (mm)")
 
     top_ramp = InputRectangleROI()
     bottom_ramp = InputRectangleROI()
@@ -85,7 +89,7 @@ class MedACRSliceWidth(PhantomModule):
                 bottom_ymax = round(context.ycent - bottom_pix_offset)
         else:
             self.ramp_dir.value = "Vertical"
-            box_height = ROI_HEIGHT/ pixel_width
+            box_height = ROI_HEIGHT / pixel_width
             box_width = ROI_WIDTH / pixel_height
             top_pix_offset = TOP_OFFSET / pixel_width
             bottom_pix_offset = BOTTOM_OFFSET / pixel_width
@@ -105,21 +109,21 @@ class MedACRSliceWidth(PhantomModule):
                 bottom_xmax = round(context.xcent - bottom_pix_offset)
 
         top_roi = RectangleROI(image,
-                                    top_xmin,
-                                    top_ymin,
-                                    top_xmax,
-                                    top_ymax,
-                                    slice_num=image.current_slice,
-                                    replace=True)
+                               top_xmin,
+                               top_ymin,
+                               top_xmax,
+                               top_ymax,
+                               slice_num=image.current_slice,
+                               replace=True)
         self.top_ramp.register_roi(top_roi)
 
         bottom_roi = RectangleROI(image,
-                                    bottom_xmin,
-                                    bottom_ymin,
-                                    bottom_xmax,
-                                    bottom_ymax,
-                                    slice_num=image.current_slice,
-                                    replace=True)
+                                  bottom_xmin,
+                                  bottom_ymin,
+                                  bottom_xmax,
+                                  bottom_ymax,
+                                  slice_num=image.current_slice,
+                                  replace=True)
         self.bottom_ramp.register_roi(bottom_roi)
 
     def post_roi_register(self, roi_input: BaseInputROI):
@@ -155,26 +159,26 @@ class MedACRSliceWidth(PhantomModule):
 
             top_init = (top_fwhm_peak.minimum,
                         top_fwhm_peak.maximum,
-                        (top_fwhm_peak.maximum-top_fwhm_peak.minimum)/4,
+                        (top_fwhm_peak.maximum - top_fwhm_peak.minimum) / 4,
                         np.max(top_prof) - np.min(top_prof),
                         np.min(top_prof))
             top_indeces = np.indices(top_prof.shape)[0]
             top_fit, _ = curve_fit(flat_top_gauss,
-                                top_indeces,
-                                top_prof,
-                                top_init)
+                                   top_indeces,
+                                   top_prof,
+                                   top_init)
             top_fwhm = abs(top_fit[1] - top_fit[0]) + (c_coeff * top_fit[2])
 
             bottom_init = (bottom_fwhm_peak.minimum,
-                        bottom_fwhm_peak.maximum,
-                        (bottom_fwhm_peak.maximum-bottom_fwhm_peak.minimum)/4,
-                        np.max(bottom_prof) - np.min(bottom_prof),
-                        np.min(bottom_prof))
+                           bottom_fwhm_peak.maximum,
+                           (bottom_fwhm_peak.maximum - bottom_fwhm_peak.minimum) / 4,
+                           np.max(bottom_prof) - np.min(bottom_prof),
+                           np.min(bottom_prof))
             bottom_indeces = np.indices(bottom_prof.shape)[0]
             bottom_fit, _ = curve_fit(flat_top_gauss,
-                                bottom_indeces,
-                                bottom_prof,
-                                bottom_init)
+                                      bottom_indeces,
+                                      bottom_prof,
+                                      bottom_init)
             bottom_fwhm = abs(bottom_fit[1] - bottom_fit[0]) + (c_coeff * bottom_fit[2])
 
             tan_theta = self.tan_theta.value
@@ -212,8 +216,8 @@ class MedACRSliceWidth(PhantomModule):
 
             top_indeces = np.indices(top_prof.shape)[0]
             bottom_indeces = np.indices(bottom_prof.shape)[0]
-            top_x_locs = top_indeces*tan_theta*pix_size
-            bottom_x_locs = bottom_indeces*tan_theta*pix_size
+            top_x_locs = top_indeces * tan_theta * pix_size
+            bottom_x_locs = bottom_indeces * tan_theta * pix_size
 
             plt.clf()
             plt.plot(top_x_locs, top_prof, label="Top Profile")
@@ -223,18 +227,18 @@ class MedACRSliceWidth(PhantomModule):
                 top_fwhm_peak = nth_max_widest_peak(top_prof, divisor)
                 top_init = (top_fwhm_peak.minimum,
                             top_fwhm_peak.maximum,
-                            (top_fwhm_peak.maximum-top_fwhm_peak.minimum)/4,
+                            (top_fwhm_peak.maximum - top_fwhm_peak.minimum) / 4,
                             np.max(top_prof) - np.min(top_prof),
                             np.min(top_prof))
 
                 top_fit, _ = curve_fit(flat_top_gauss,
-                                    top_indeces,
-                                    top_prof,
-                                    top_init)
+                                       top_indeces,
+                                       top_prof,
+                                       top_init)
 
                 top_fitted = flat_top_gauss(top_indeces, *top_fit)
                 plt.plot(top_x_locs, top_fitted,
-                        label = "Top Fit")
+                         label="Top Fit")
 
             except RuntimeError:
                 pass
@@ -244,18 +248,18 @@ class MedACRSliceWidth(PhantomModule):
             try:
                 bottom_fwhm_peak = nth_max_widest_peak(bottom_prof, divisor)
                 bottom_init = (bottom_fwhm_peak.minimum,
-                            bottom_fwhm_peak.maximum,
-                            (bottom_fwhm_peak.maximum-bottom_fwhm_peak.minimum)/4,
-                            np.max(bottom_prof) - np.min(bottom_prof),
-                            np.min(bottom_prof))
+                               bottom_fwhm_peak.maximum,
+                               (bottom_fwhm_peak.maximum - bottom_fwhm_peak.minimum) / 4,
+                               np.max(bottom_prof) - np.min(bottom_prof),
+                               np.min(bottom_prof))
 
                 bottom_fit, _ = curve_fit(flat_top_gauss,
-                                    bottom_indeces,
-                                    bottom_prof,
-                                    bottom_init)
+                                          bottom_indeces,
+                                          bottom_prof,
+                                          bottom_init)
                 bottom_fitted = flat_top_gauss(bottom_indeces, *bottom_fit)
                 plt.plot(bottom_x_locs, bottom_fitted,
-                        label = "Bottom Fit")
+                         label="Bottom Fit")
             except RuntimeError:
                 pass
 
