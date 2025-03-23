@@ -12,6 +12,7 @@ from .acr_med_context import MedACRContextManagerGenerator
 from .modules.sub_snr import MedACRSubSNR
 from .modules.uniformity import MedACRUniformity
 from .modules.slice_width import MedACRSliceWidth
+from .modules.slice_pos import MedACRSlicePosition
 
 
 class MedACRrptCollection(BaseCollection):
@@ -31,12 +32,16 @@ class MedACRrptCollection(BaseCollection):
     slice_width1 = MedACRSliceWidth(verbose_name="Slice Width")
     slice_width2 = MedACRSliceWidth(verbose_name="Slice Width")
 
+    slice_pos1 = MedACRSlicePosition(verbose_name="Slice Position")
+    slice_pos2 = MedACRSlicePosition(verbose_name="Slice Position")
+
     snr_output = OutputFrame(verbose_name="SNR Output")
     image1_output = OutputFrame(verbose_name="Image 1 Results")
     image2_output = OutputFrame(verbose_name="Image 2 Results")
 
     uniformity_window = WindowGroup([uniformity1, uniformity2], verbose_name="Uniformity")
     slice_width_window = WindowGroup([slice_width1, slice_width2], verbose_name="Slice Width")
+    slice_pos_windoe = WindowGroup([slice_pos1,slice_pos2], verbose_name="Slice Position")
 
     def load_outputs(self):
         self.snr_output.register_output(self.snr.signal)
@@ -46,9 +51,13 @@ class MedACRrptCollection(BaseCollection):
 
         self.image1_output.register_output(self.uniformity1.uniformity)
         self.image1_output.register_output(self.slice_width1.slice_width)
+        self.image1_output.register_output(self.slice_pos1.slice_1_pos)
+        self.image1_output.register_output(self.slice_pos1.slice_11_pos)
 
         self.image2_output.register_output(self.uniformity2.uniformity)
         self.image2_output.register_output(self.slice_width2.slice_width)
+        self.image2_output.register_output(self.slice_pos2.slice_1_pos)
+        self.image2_output.register_output(self.slice_pos2.slice_11_pos)
 
     def on_image_load(self, viewer: BaseViewer) -> None:
         if viewer is self.viewer1:
@@ -57,9 +66,11 @@ class MedACRrptCollection(BaseCollection):
                 self.snr.viewer1.load_image(image)
                 self.uniformity1.viewer.load_image(image)
                 self.slice_width1.viewer.load_image(image)
+                self.slice_pos1.viewer1.load_image(image)
         elif viewer is self.viewer2:
             if self.viewer2.image is not None:
                 image = self.viewer2.image
                 self.snr.viewer2.load_image(image)
                 self.uniformity2.viewer.load_image(image)
                 self.slice_width2.viewer.load_image(image)
+                self.slice_pos2.viewer1.load_image(image)
