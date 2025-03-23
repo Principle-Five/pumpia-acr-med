@@ -278,7 +278,6 @@ class MedACRContextManager(PhantomContextManager):
 
         res_insert_opp = int(res_insert_opp)
 
-
         if res_insert_opp == 0 or res_insert_opp == 1:
             five_box_xmin = round(xcent - five_box_offset_x - five_box_width)
             five_box_xmax = round(xcent - five_box_offset_x) + 1
@@ -368,21 +367,21 @@ class MedACRContextManager(PhantomContextManager):
             self.manager.add_roi(right_roi)
 
             five_roi = RectangleROI(image,
-                                     five_box_xmin,
-                                     five_box_ymin,
-                                     five_box_xmax,
-                                     five_box_ymax,
-                                     replace=True,
-                                     name="Diagonal 1")
+                                    five_box_xmin,
+                                    five_box_ymin,
+                                    five_box_xmax,
+                                    five_box_ymax,
+                                    replace=True,
+                                    name="Diagonal 1")
             self.manager.add_roi(five_roi)
 
             six_roi = RectangleROI(image,
-                                     six_box_xmin,
-                                     six_box_ymin,
-                                     six_box_xmax,
-                                     six_box_ymax,
-                                     replace=True,
-                                     name="Diagonal 2")
+                                   six_box_xmin,
+                                   six_box_ymin,
+                                   six_box_xmax,
+                                   six_box_ymax,
+                                   replace=True,
+                                   name="Diagonal 2")
             self.manager.add_roi(six_roi)
 
             cent = PointROI(image,
