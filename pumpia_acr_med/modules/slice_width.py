@@ -16,7 +16,7 @@ from pumpia.file_handling.dicom_structures import Series, Instance
 from pumpia.utilities.array_utils import nth_max_widest_peak
 from pumpia.utilities.feature_utils import flat_top_gauss
 
-from ..acr_med_context import MedACRContextManagerGenerator, MedACRContext
+from ..med_acr_context import MedACRContextManagerGenerator, MedACRContext
 
 # ROI sizes in mm
 ROI_HEIGHT = 3
