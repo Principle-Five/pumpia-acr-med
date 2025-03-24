@@ -7,7 +7,7 @@ from pumpia.module_handling.in_outs.viewer_ios import MonochromeDicomViewerIO
 if str(Path(__file__).resolve().parent.parent) not in sys.path:
     sys.path.append(str(Path(__file__).resolve().parent.parent))
 
-from pumpia_acr_med.acr_med_context import MedACRContextManagerGenerator
+from pumpia_acr_med.med_acr_context import MedACRContextManagerGenerator
 
 
 class ContextTest(BaseCollection):

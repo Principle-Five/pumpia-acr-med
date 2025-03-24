@@ -12,7 +12,7 @@ from pumpia.module_handling.in_outs.simple import (PercInput,
 from pumpia.image_handling.roi_structures import EllipseROI, RectangleROI
 from pumpia.file_handling.dicom_structures import Series, Instance
 
-from ..acr_med_context import MedACRContextManagerGenerator, MedACRContext
+from ..med_acr_context import MedACRContextManagerGenerator, MedACRContext
 
 
 class MedACRGhosting(PhantomModule):
