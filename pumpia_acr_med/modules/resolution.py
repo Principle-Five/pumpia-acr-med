@@ -1,0 +1,3 @@
+OFFSET = 25
+WIDTH = 20
+LENGTH = 8
