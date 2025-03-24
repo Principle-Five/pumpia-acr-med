@@ -44,7 +44,7 @@ class MedACRrptCollection(BaseCollection):
     image2_output = OutputFrame(verbose_name="Image 2 Results")
 
     uniformity_window = WindowGroup([uniformity1, uniformity2], verbose_name="Uniformity")
-    uniformity_window = WindowGroup([ghosting1, ghosting2], verbose_name="Ghosting")
+    ghosting_window = WindowGroup([ghosting1, ghosting2], verbose_name="Ghosting")
     slice_width_window = WindowGroup([slice_width1, slice_width2], verbose_name="Slice Width")
     slice_pos_windoe = WindowGroup([slice_pos1, slice_pos2], verbose_name="Slice Position")
 
