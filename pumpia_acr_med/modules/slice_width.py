@@ -19,10 +19,10 @@ from pumpia.utilities.feature_utils import flat_top_gauss
 from ..med_acr_context import MedACRContextManagerGenerator, MedACRContext
 
 # ROI sizes in mm
-ROI_HEIGHT = 3
+ROI_HEIGHT = 2
 ROI_WIDTH = 120
-BOTTOM_OFFSET = 1
-TOP_OFFSET = -3
+BOTTOM_OFFSET = 0.5
+TOP_OFFSET = -3.5
 
 
 class MedACRSliceWidth(PhantomModule):
