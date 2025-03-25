@@ -27,7 +27,7 @@ class MedACRPhantomWidth(PhantomModule):
 
     viewer = MonochromeDicomViewerIO(row=0, column=0)
 
-    max_perc = PercInput(20, verbose_name="Width position (% of max)")
+    max_perc = PercInput(50, verbose_name="Width position (% of max)")
 
     bool_vertical = BoolInput(verbose_name="Include vertical in Average")
     bool_up_slope = BoolInput(verbose_name="Include up slope in Average")
