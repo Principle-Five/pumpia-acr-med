@@ -65,7 +65,6 @@ class MedACRrptCollection(BaseCollection):
         self.image1_output.register_output(self.slice_width1.slice_width)
         self.image1_output.register_output(self.slice_pos1.slice_1_pos)
         self.image1_output.register_output(self.slice_pos1.slice_11_pos)
-        self.image1_output.register_output(self.phantom_width1.average_width)
         self.image1_output.register_output(self.phantom_width1.linearity)
         self.image1_output.register_output(self.phantom_width1.distortion)
 
@@ -74,8 +73,7 @@ class MedACRrptCollection(BaseCollection):
         self.image2_output.register_output(self.slice_width2.slice_width)
         self.image2_output.register_output(self.slice_pos2.slice_1_pos)
         self.image2_output.register_output(self.slice_pos2.slice_11_pos)
-        self.image2_output.register_output(self.phantom_width2.average_width)
-        self.image1_output.register_output(self.phantom_width2.linearity)
+        self.image2_output.register_output(self.phantom_width2.linearity)
         self.image2_output.register_output(self.phantom_width2.distortion)
 
         IOGroup([self.uniformity1.size, self.uniformity2.size])
