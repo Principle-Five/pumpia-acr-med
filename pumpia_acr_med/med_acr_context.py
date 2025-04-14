@@ -335,6 +335,7 @@ class MedACRContextManager(PhantomContextManager):
                                    top_box_ymin,
                                    top_box_xmax,
                                    top_box_ymax,
+                                   slice_num=inserts_slice,
                                    replace=True,
                                    name="Top")
             self.manager.add_roi(top_roi)
@@ -344,6 +345,7 @@ class MedACRContextManager(PhantomContextManager):
                                       bottom_box_ymin,
                                       bottom_box_xmax,
                                       bottom_box_ymax,
+                                      slice_num=inserts_slice,
                                       replace=True,
                                       name="Bottom")
             self.manager.add_roi(bottom_roi)
@@ -353,6 +355,7 @@ class MedACRContextManager(PhantomContextManager):
                                     left_box_ymin,
                                     left_box_xmax,
                                     left_box_ymax,
+                                    slice_num=inserts_slice,
                                     replace=True,
                                     name="Left")
             self.manager.add_roi(left_roi)
@@ -362,6 +365,7 @@ class MedACRContextManager(PhantomContextManager):
                                      right_box_ymin,
                                      right_box_xmax,
                                      right_box_ymax,
+                                     slice_num=inserts_slice,
                                      replace=True,
                                      name="Right")
             self.manager.add_roi(right_roi)
@@ -371,6 +375,7 @@ class MedACRContextManager(PhantomContextManager):
                                     five_box_ymin,
                                     five_box_xmax,
                                     five_box_ymax,
+                                    slice_num=inserts_slice,
                                     replace=True,
                                     name="Diagonal 1")
             self.manager.add_roi(five_roi)
@@ -380,6 +385,7 @@ class MedACRContextManager(PhantomContextManager):
                                    six_box_ymin,
                                    six_box_xmax,
                                    six_box_ymax,
+                                   slice_num=inserts_slice,
                                    replace=True,
                                    name="Diagonal 2")
             self.manager.add_roi(six_roi)
@@ -387,6 +393,7 @@ class MedACRContextManager(PhantomContextManager):
             cent = PointROI(image,
                             round(boundary_context.xcent),
                             round(boundary_context.ycent),
+                            slice_num=inserts_slice,
                             name="Centre",
                             replace=True)
             self.manager.add_roi(cent)
