@@ -25,6 +25,9 @@ class MedACRSubSNR(PhantomModule):
     Module for subtraction method SNR on medium ACR phantom.
     """
     context_manager_generator = MedACRContextManagerGenerator()
+    show_draw_rois_button = True
+    show_analyse_button = True
+
     viewer1 = MonochromeDicomViewerIO(row=0, column=0)
     viewer2 = MonochromeDicomViewerIO(row=0, column=1, allow_changing_rois=False)
 
@@ -36,14 +39,14 @@ class MedACRSubSNR(PhantomModule):
     pe_cor_bool = BoolInput(verbose_name="Phase Encode Correction")
 
     slice_used = IntOutput()
-    im_bw = FloatOutput(verbose_name="Image Bandwidth (Hz/px)")
-    pixel_size_cor = FloatOutput(verbose_name="Pixel Size Correction")
-    pe_cor = FloatOutput(verbose_name="Phase Encode Correction")
-    avg_cor = FloatOutput(verbose_name="Averages Correction")
-    signal = FloatOutput()
-    noise = FloatOutput()
-    snr = FloatOutput(verbose_name="SNR")
-    cor_snr = FloatOutput(verbose_name="Corrected SNR")
+    im_bw = FloatOutput(verbose_name="Image Bandwidth (Hz/px)", reset_on_analysis=True)
+    pixel_size_cor = FloatOutput(verbose_name="Pixel Size Correction", reset_on_analysis=True)
+    pe_cor = FloatOutput(verbose_name="Phase Encode Correction", reset_on_analysis=True)
+    avg_cor = FloatOutput(verbose_name="Averages Correction", reset_on_analysis=True)
+    signal = FloatOutput(reset_on_analysis=True)
+    noise = FloatOutput(reset_on_analysis=True)
+    snr = FloatOutput(verbose_name="SNR", reset_on_analysis=True)
+    cor_snr = FloatOutput(verbose_name="Corrected SNR", reset_on_analysis=True)
 
     signal_roi1 = InputEllipseROI("SNR ROI1")
     signal_roi2 = InputEllipseROI("SNR ROI2", allow_manual_draw=False)

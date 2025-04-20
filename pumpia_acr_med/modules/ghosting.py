@@ -20,12 +20,15 @@ class MedACRGhosting(PhantomModule):
     Ghosting module for medium ACR phantom.
     """
     context_manager_generator = MedACRContextManagerGenerator()
+    show_draw_rois_button = True
+    show_analyse_button = True
+
     viewer = MonochromeDicomViewerIO(row=0, column=0)
 
     size = PercInput(70, verbose_name="Size (%)")
 
     slice_used = IntOutput()
-    ghosting = FloatOutput(verbose_name="Ghosting (%)")
+    ghosting = FloatOutput(verbose_name="Ghosting (%)", reset_on_analysis=True)
 
     phantom_roi = InputEllipseROI("Phantom ROI")
     top_roi = InputRectangleROI("Top ROI")

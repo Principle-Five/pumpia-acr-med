@@ -24,6 +24,8 @@ class MedACRPhantomWidth(PhantomModule):
     Calculates medium ACR phantom width
     """
     context_manager_generator = MedACRContextManagerGenerator()
+    show_draw_rois_button = True
+    show_analyse_button = True
 
     viewer = MonochromeDicomViewerIO(row=0, column=0)
 
@@ -34,14 +36,14 @@ class MedACRPhantomWidth(PhantomModule):
     bool_horizontal = BoolInput(verbose_name="Include horizontal in Average")
     bool_down_slope = BoolInput(verbose_name="Include down slope in Average")
 
-    width_vertical = FloatOutput(verbose_name="vertical Width")
-    width_up_slope = FloatOutput(verbose_name="up slope Width")
-    width_horizontal = FloatOutput(verbose_name="horizontal Width")
-    width_down_slope = FloatOutput(verbose_name="down slope Width")
+    width_vertical = FloatOutput(verbose_name="vertical Width", reset_on_analysis=True)
+    width_up_slope = FloatOutput(verbose_name="up slope Width", reset_on_analysis=True)
+    width_horizontal = FloatOutput(verbose_name="horizontal Width", reset_on_analysis=True)
+    width_down_slope = FloatOutput(verbose_name="down slope Width", reset_on_analysis=True)
 
-    average_width = FloatOutput(verbose_name="Average Phantom Width")
-    linearity = FloatOutput(verbose_name="Geometric Linearity")
-    distortion = FloatOutput(verbose_name="Geometric Distortion (%)")
+    average_width = FloatOutput(verbose_name="Average Phantom Width", reset_on_analysis=True)
+    linearity = FloatOutput(verbose_name="Geometric Linearity", reset_on_analysis=True)
+    distortion = FloatOutput(verbose_name="Geometric Distortion (%)", reset_on_analysis=True)
 
     line_vertical = InputLineROI(name="vertical Line")
     line_up_slope = InputLineROI(name="up slope Line")

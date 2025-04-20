@@ -33,18 +33,20 @@ class MedACRSliceWidth(PhantomModule):
     of the top and bottom ramp widths.
     """
     context_manager_generator = MedACRContextManagerGenerator()
+    show_draw_rois_button = True
+    show_analyse_button = True
 
     viewer = MonochromeDicomViewerIO(row=0, column=0)
 
     tan_theta = FloatInput(0.1, verbose_name="Tan of ramp angle")
     max_perc = PercInput(50, verbose_name="Width position (% of max)")
 
-    ramp_dir = StringOutput(verbose_name="Ramp Direction", reset_on_analysis=False)
+    ramp_dir = StringOutput(verbose_name="Ramp Direction")
 
-    expected_width = FloatOutput(verbose_name="Expected Width (mm)")
-    top_ramp_width = FloatOutput(verbose_name="Top Ramp Width (mm)")
-    bottom_ramp_width = FloatOutput(verbose_name="Bottom Ramp Width (mm)")
-    slice_width = FloatOutput(verbose_name="Slice Width (mm)")
+    expected_width = FloatOutput(verbose_name="Expected Width (mm)", reset_on_analysis=True)
+    top_ramp_width = FloatOutput(verbose_name="Top Ramp Width (mm)", reset_on_analysis=True)
+    bottom_ramp_width = FloatOutput(verbose_name="Bottom Ramp Width (mm)", reset_on_analysis=True)
+    slice_width = FloatOutput(verbose_name="Slice Width (mm)", reset_on_analysis=True)
 
     top_ramp = InputRectangleROI()
     bottom_ramp = InputRectangleROI()
