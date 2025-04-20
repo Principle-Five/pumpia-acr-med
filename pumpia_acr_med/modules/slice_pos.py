@@ -15,7 +15,7 @@ from pumpia.image_handling.roi_structures import RectangleROI
 from pumpia.file_handling.dicom_structures import Series, Instance
 from pumpia.utilities.array_utils import nth_max_positions
 
-from ..med_acr_context import MedACRContextManagerGenerator, MedACRContext
+from pumpia_acr_med.med_acr_context import MedACRContextManagerGenerator, MedACRContext
 
 ROI_OFFSET = 55
 ROI_WIDTH = 2
