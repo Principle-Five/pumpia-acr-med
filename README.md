@@ -15,8 +15,8 @@ To run the collection:
 
 To use the collection:
 1. Load the folder with the relevant images
-2. Drag and drop the series containing the ACR images into the left viewer
-3. Drag and drop the series containing repeat images into the right viewer
+2. Drag and drop the series containing the ACR images into the left viewer of the `Main` tab
+3. Drag and drop the series containing repeat images into the right viewer of the `Main` tab
 4. Generate the ROIs and run analysis
 5. Correct the context if required (see below)
     - Re-run generating ROIs
