@@ -1,6 +1,6 @@
 # Introduction
 This repository contains code to analyse the medium ACR phantom using the [PumpIA](https://github.com/Principle-Five/pumpia) framework.
-It uses the subtraction SNR method and therefore expects a repeat image, however all modules except the SNR module will run without two images.
+It uses the subtraction SNR method and therefore expects a repeat image, however all modules except the SNR module will run without a single image.
 
 It is currently not validated and is provided as is, see the license for more information.
 
@@ -11,7 +11,7 @@ Users should make themselves familiar with the [PumpIA user interface](https://p
 To run the collection:
 1. Clone the repository
 2. Install the requirements using the command `pip install -r requirements.txt` when in the repository directory
-3. Run the `run_med_acr_collection.py` script
+3. Run the `run_med_acr_rpt_collection.py` script
 
 To use the collection:
 1. Load the folder with the relevant images
