@@ -24,13 +24,16 @@ class MedACRUniformity(PhantomModule):
     Integral uniformity module for medium ACR phantom.
     """
     context_manager_generator = MedACRContextManagerGenerator()
+    show_draw_rois_button = True
+    show_analyse_button = True
+
     viewer = MonochromeDicomViewerIO(row=0, column=0)
 
     size = PercInput(70, verbose_name="Size (%)")
     kernel_bool = BoolInput(verbose_name="Apply Low Pass Kernel")
 
     slice_used = IntOutput()
-    uniformity = FloatOutput(verbose_name="Uniformity (%)")
+    uniformity = FloatOutput(verbose_name="Uniformity (%)", reset_on_analysis=True)
 
     uniformity_roi = InputEllipseROI("Uniformity ROI")
 

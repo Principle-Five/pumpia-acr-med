@@ -31,17 +31,21 @@ class MedACRSlicePosition(PhantomModule):
     Slice position is given in absolute offset, not the distance measured by the bars.
     """
     context_manager_generator = MedACRContextManagerGenerator()
+    show_draw_rois_button = True
+    show_analyse_button = True
 
     viewer1 = MonochromeDicomViewerIO(row=0, column=0)
     viewer2 = MonochromeDicomViewerIO(row=0, column=1, allow_drag_drop=False)
 
-    wedge_dir = StringOutput(verbose_name="Wedge Direction", reset_on_analysis=False)
-    wedge_side = StringOutput(reset_on_analysis=False)
+    wedge_dir = StringOutput(verbose_name="Wedge Direction")
+    wedge_side = StringOutput()
 
-    slice_1_bar_diff = FloatOutput(verbose_name="Slice 1 Bar Length Difference (mm)")
-    slice_1_pos = FloatOutput(verbose_name="Slice 1 position (mm)")
-    slice_11_bar_diff = FloatOutput(verbose_name="Slice 11 Bar Length Difference (mm)")
-    slice_11_pos = FloatOutput(verbose_name="Slice 11 position (mm)")
+    slice_1_bar_diff = FloatOutput(verbose_name="Slice 1 Bar Length Difference (mm)",
+                                   reset_on_analysis=True)
+    slice_1_pos = FloatOutput(verbose_name="Slice 1 position (mm)", reset_on_analysis=True)
+    slice_11_bar_diff = FloatOutput(verbose_name="Slice 11 Bar Length Difference (mm)",
+                                    reset_on_analysis=True)
+    slice_11_pos = FloatOutput(verbose_name="Slice 11 position (mm)", reset_on_analysis=True)
 
     slice_1_left_wedge = InputRectangleROI()
     slice_1_right_wedge = InputRectangleROI()
