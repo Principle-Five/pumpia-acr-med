@@ -12,7 +12,7 @@ from pumpia.image_handling.roi_structures import LineROI
 from pumpia.file_handling.dicom_structures import Series, Instance
 from pumpia.utilities.array_utils import nth_max_bounds
 
-from ..med_acr_context import MedACRContext, MedACRContextManagerGenerator
+from pumpia_acr_med.med_acr_context import MedACRContext, MedACRContextManagerGenerator
 
 # distances in mm
 HALF_LINE_LENGTH = 100

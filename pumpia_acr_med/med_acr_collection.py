@@ -9,13 +9,13 @@ from pumpia.module_handling.in_outs.groups import IOGroup
 from pumpia.module_handling.in_outs.viewer_ios import MonochromeDicomViewerIO
 from pumpia.widgets.viewers import BaseViewer
 
-from .med_acr_context import MedACRContextManagerGenerator
-from .modules.sub_snr import MedACRSubSNR
-from .modules.uniformity import MedACRUniformity
-from .modules.ghosting import MedACRGhosting
-from .modules.slice_width import MedACRSliceWidth
-from .modules.slice_pos import MedACRSlicePosition
-from .modules.phantom_width import MedACRPhantomWidth
+from pumpia_acr_med.med_acr_context import MedACRContextManagerGenerator
+from pumpia_acr_med.modules.sub_snr import MedACRSubSNR
+from pumpia_acr_med.modules.uniformity import MedACRUniformity
+from pumpia_acr_med.modules.ghosting import MedACRGhosting
+from pumpia_acr_med.modules.slice_width import MedACRSliceWidth
+from pumpia_acr_med.modules.slice_pos import MedACRSlicePosition
+from pumpia_acr_med.modules.phantom_width import MedACRPhantomWidth
 
 
 class MedACRrptCollection(BaseCollection):
