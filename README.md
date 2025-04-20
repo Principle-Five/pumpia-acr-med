@@ -37,7 +37,7 @@ The inserts slice is the slice with the resolution inserts in, this is either th
 The Resolution Insert Side and Circle Insert Side options must not be on the same axis. i.e. top and bottom or left and right.
 The orthogonality of these options allows for the orientation and any flipping to be known.
 
-If manual control is recommended to set the resolution insert side first as this is usually more obvious, and then set the circle insert side.
+If manual control is required then it is recommended to set the resolution insert side first as this is usually more obvious, and then set the circle insert side.
 
 To avoid the program resetting any selected values the option `Full Manual Control` must be selected. This does not reset when a new image is loaded.
 
