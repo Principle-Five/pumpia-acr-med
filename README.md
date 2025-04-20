@@ -1,6 +1,6 @@
 # Introduction
 This repository contains code to analyse the medium ACR phantom using the [PumpIA](https://github.com/Principle-Five/pumpia) framework.
-It uses the subtraction SNR method and therefore expects a repeat image, however all modules except the SNR module will run without a single image.
+It uses the subtraction SNR method and therefore expects a repeat image, however all modules except the SNR module will run with a single image.
 
 It is currently not validated and is provided as is, see the license for more information.
 
