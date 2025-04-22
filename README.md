@@ -18,7 +18,7 @@ Users should make themselves familiar with the [PumpIA user interface](https://p
 
 To run the collection:
 1. Clone the repository
-2. Install the requirements using the command `pip install -r requirements.txt` when in the repository directory or use an environment manager to install the requirements from `requirements.txt`
+2. Use an environment manager to install the requirements from `requirements.txt` or install the requirements using the command `pip install -r requirements.txt` when in the repository directory
 3. Run the `run_med_acr_rpt_collection.py` script
 
 To use the collection:
