@@ -81,6 +81,7 @@ class MedACRrptCollection(BaseCollection):
         IOGroup([self.ghosting1.size, self.ghosting2.size])
         IOGroup([self.slice_width1.tan_theta, self.slice_width2.tan_theta])
         IOGroup([self.slice_width1.max_perc, self.slice_width2.max_perc])
+        IOGroup([self.slice_width1.fit_type, self.slice_width2.fit_type])
         IOGroup([self.phantom_width1.max_perc, self.phantom_width2.max_perc])
         IOGroup([self.phantom_width1.bool_vertical, self.phantom_width2.bool_vertical])
         IOGroup([self.phantom_width1.bool_horizontal, self.phantom_width2.bool_horizontal])
