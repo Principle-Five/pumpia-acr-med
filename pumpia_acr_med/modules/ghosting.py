@@ -82,32 +82,32 @@ class MedACRGhosting(PhantomModule):
         top = RectangleROI(image,
                            tb_xmin,
                            top_ymin,
-                           tb_xmax,
-                           top_ymax,
+                           tb_xmax - tb_xmin,
+                           top_ymax - top_ymin,
                            slice_num=image.current_slice)
         self.top_roi.register_roi(top)
 
         bottom = RectangleROI(image,
                               tb_xmin,
                               bottom_ymin,
-                              tb_xmax,
-                              bottom_ymax,
+                              tb_xmax - tb_xmin,
+                              bottom_ymax - bottom_ymin,
                               slice_num=image.current_slice)
         self.bottom_roi.register_roi(bottom)
 
         left = RectangleROI(image,
                             left_xmin,
                             lr_ymin,
-                            left_xmax,
-                            lr_ymax,
+                            left_xmax - left_xmin,
+                            lr_ymax - lr_ymin,
                             slice_num=image.current_slice)
         self.left_roi.register_roi(left)
 
         right = RectangleROI(image,
                              right_xmin,
                              lr_ymin,
-                             right_xmax,
-                             lr_ymax,
+                             right_xmax - right_xmin,
+                             lr_ymax - lr_ymin,
                              slice_num=image.current_slice)
         self.right_roi.register_roi(right)
 
