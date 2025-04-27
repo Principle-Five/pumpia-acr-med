@@ -330,11 +330,14 @@ class MedACRContextManager(PhantomContextManager):
                 circle_insert_side = "top"
 
         if self.show_boxes_var.get():
+            init_box_width = top_box_xmax - top_box_xmin
+            init_box_height = top_box_ymax - top_box_ymin
+
             top_roi = RectangleROI(image,
                                    top_box_xmin,
                                    top_box_ymin,
-                                   top_box_xmax,
-                                   top_box_ymax,
+                                   init_box_width,
+                                   init_box_height,
                                    slice_num=inserts_slice,
                                    replace=True,
                                    name="Top")
@@ -343,8 +346,8 @@ class MedACRContextManager(PhantomContextManager):
             bottom_roi = RectangleROI(image,
                                       bottom_box_xmin,
                                       bottom_box_ymin,
-                                      bottom_box_xmax,
-                                      bottom_box_ymax,
+                                      init_box_width,
+                                      init_box_height,
                                       slice_num=inserts_slice,
                                       replace=True,
                                       name="Bottom")
@@ -353,8 +356,8 @@ class MedACRContextManager(PhantomContextManager):
             left_roi = RectangleROI(image,
                                     left_box_xmin,
                                     left_box_ymin,
-                                    left_box_xmax,
-                                    left_box_ymax,
+                                    init_box_width,
+                                    init_box_height,
                                     slice_num=inserts_slice,
                                     replace=True,
                                     name="Left")
@@ -363,18 +366,21 @@ class MedACRContextManager(PhantomContextManager):
             right_roi = RectangleROI(image,
                                      right_box_xmin,
                                      right_box_ymin,
-                                     right_box_xmax,
-                                     right_box_ymax,
+                                     init_box_width,
+                                     init_box_height,
                                      slice_num=inserts_slice,
                                      replace=True,
                                      name="Right")
             self.manager.add_roi(right_roi)
 
+            sec_box_width = five_box_xmax - five_box_xmin  # type: ignore
+            sec_box_height = five_box_ymax - five_box_ymin  # type: ignore
+
             five_roi = RectangleROI(image,
                                     five_box_xmin,
                                     five_box_ymin,
-                                    five_box_xmax,
-                                    five_box_ymax,
+                                    sec_box_width,
+                                    sec_box_height,
                                     slice_num=inserts_slice,
                                     replace=True,
                                     name="Diagonal 1")
@@ -383,8 +389,8 @@ class MedACRContextManager(PhantomContextManager):
             six_roi = RectangleROI(image,
                                    six_box_xmin,
                                    six_box_ymin,
-                                   six_box_xmax,
-                                   six_box_ymax,
+                                   sec_box_width,
+                                   sec_box_height,
                                    slice_num=inserts_slice,
                                    replace=True,
                                    name="Diagonal 2")

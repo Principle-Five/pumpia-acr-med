@@ -126,8 +126,8 @@ class MedACRSlicePosition(PhantomModule):
         left_roi = RectangleROI(image1,
                                 left_xmin,
                                 left_ymin,
-                                left_xmax,
-                                left_ymax,
+                                left_xmax - left_xmin,
+                                left_ymax - left_ymin,
                                 slice_num=image1.current_slice,
                                 replace=True)
         self.slice_1_left_wedge.register_roi(left_roi)
@@ -141,8 +141,8 @@ class MedACRSlicePosition(PhantomModule):
         right_roi = RectangleROI(image1,
                                  right_xmin,
                                  right_ymin,
-                                 right_xmax,
-                                 right_ymax,
+                                 right_xmax - right_xmin,
+                                 right_ymax - right_ymin,
                                  slice_num=image1.current_slice,
                                  replace=True)
         self.slice_1_right_wedge.register_roi(right_roi)

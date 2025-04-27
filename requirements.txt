@@ -1,4 +1,4 @@
-pumpia == 0.4.*
+pumpia == 0.5.*
 numpy
 scipy
 pylibjpeg
