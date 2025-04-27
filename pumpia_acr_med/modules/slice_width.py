@@ -2,19 +2,23 @@
 Slice width for Medium ACR Phantom
 """
 import math
+from collections.abc import Callable
 import numpy as np
 from scipy.optimize import curve_fit
-
 import matplotlib.pyplot as plt
 
 from pumpia.module_handling.modules import PhantomModule
 from pumpia.module_handling.in_outs.roi_ios import BaseInputROI, InputRectangleROI
 from pumpia.module_handling.in_outs.viewer_ios import MonochromeDicomViewerIO
-from pumpia.module_handling.in_outs.simple import FloatInput, PercInput, FloatOutput, StringOutput
+from pumpia.module_handling.in_outs.simple import (FloatInput,
+                                                   PercInput,
+                                                   FloatOutput,
+                                                   StringOutput,
+                                                   OptionInput)
 from pumpia.image_handling.roi_structures import RectangleROI
 from pumpia.file_handling.dicom_structures import Series, Instance
 from pumpia.utilities.array_utils import nth_max_widest_peak
-from pumpia.utilities.feature_utils import flat_top_gauss
+from pumpia.utilities.feature_utils import flat_top_gauss, split_gauss
 
 from pumpia_acr_med.med_acr_context import MedACRContextManagerGenerator, MedACRContext
 
@@ -23,6 +27,9 @@ ROI_HEIGHT = 2
 ROI_WIDTH = 120
 BOTTOM_OFFSET = 0.5
 TOP_OFFSET = -3.5
+
+fit_options: dict[str, Callable] = {"Flat Top Gaussian": flat_top_gauss,
+                                    "Split Gaussian": split_gauss}
 
 
 class MedACRSliceWidth(PhantomModule):
@@ -40,6 +47,7 @@ class MedACRSliceWidth(PhantomModule):
 
     tan_theta = FloatInput(0.1, verbose_name="Tan of ramp angle")
     max_perc = PercInput(50, verbose_name="Width position (% of max)")
+    fit_type = OptionInput(fit_options, "Flat Top Gaussian")
 
     ramp_dir = StringOutput(verbose_name="Ramp Direction")
 
@@ -113,8 +121,8 @@ class MedACRSliceWidth(PhantomModule):
         top_roi = RectangleROI(image,
                                top_xmin,
                                top_ymin,
-                               top_xmax,
-                               top_ymax,
+                               top_xmax - top_xmin,
+                               top_ymax - top_ymin,
                                slice_num=image.current_slice,
                                replace=True)
         self.top_ramp.register_roi(top_roi)
@@ -122,8 +130,8 @@ class MedACRSliceWidth(PhantomModule):
         bottom_roi = RectangleROI(image,
                                   bottom_xmin,
                                   bottom_ymin,
-                                  bottom_xmax,
-                                  bottom_ymax,
+                                  bottom_xmax - bottom_xmin,
+                                  bottom_ymax - bottom_ymin,
                                   slice_num=image.current_slice,
                                   replace=True)
         self.bottom_ramp.register_roi(bottom_roi)
@@ -153,45 +161,90 @@ class MedACRSliceWidth(PhantomModule):
 
             self.expected_width.value = self.viewer.image.pixel_size[0]
 
-            divisor = 100 / self.max_perc.value
-            c_coeff = 2 * math.sqrt(2 * math.log(divisor))
+            if self.fit_type.value is split_gauss:
+                # reciprocal would require a negative in c_coeff
+                divisor = 100 / self.max_perc.value
+                c_coeff = math.sqrt(2 * math.log(divisor))
 
-            top_fwhm_peak = nth_max_widest_peak(top_prof, divisor)
-            bottom_fwhm_peak = nth_max_widest_peak(bottom_prof, divisor)
+                top_fwhm_peak = nth_max_widest_peak(top_prof, divisor)
+                bottom_fwhm_peak = nth_max_widest_peak(bottom_prof, divisor)
 
-            top_init = (top_fwhm_peak.minimum,
-                        top_fwhm_peak.maximum,
-                        (top_fwhm_peak.maximum - top_fwhm_peak.minimum) / 4,
-                        np.max(top_prof) - np.min(top_prof),
-                        np.min(top_prof))
-            top_indeces = np.indices(top_prof.shape)[0]
-            top_fit, _ = curve_fit(flat_top_gauss,
-                                   top_indeces,
-                                   top_prof,
-                                   top_init)
-            top_fwhm = abs(top_fit[1] - top_fit[0]) + (c_coeff * top_fit[2])
+                top_init = (top_fwhm_peak.minimum,
+                            top_fwhm_peak.maximum,
+                            (top_fwhm_peak.maximum - top_fwhm_peak.minimum) / 4,
+                            np.max(top_prof) - np.min(top_prof),
+                            np.min(top_prof))
+                top_indeces = np.indices(top_prof.shape)[0]
+                top_fit, _ = curve_fit(split_gauss,
+                                       top_indeces,
+                                       top_prof,
+                                       top_init)
+                top_fwhm = abs(top_fit[1] - top_fit[0]) + (2 * c_coeff * top_fit[2])
 
-            bottom_init = (bottom_fwhm_peak.minimum,
-                           bottom_fwhm_peak.maximum,
-                           (bottom_fwhm_peak.maximum - bottom_fwhm_peak.minimum) / 4,
-                           np.max(bottom_prof) - np.min(bottom_prof),
-                           np.min(bottom_prof))
-            bottom_indeces = np.indices(bottom_prof.shape)[0]
-            bottom_fit, _ = curve_fit(flat_top_gauss,
-                                      bottom_indeces,
-                                      bottom_prof,
-                                      bottom_init)
-            bottom_fwhm = abs(bottom_fit[1] - bottom_fit[0]) + (c_coeff * bottom_fit[2])
+                bottom_init = (bottom_fwhm_peak.minimum,
+                               bottom_fwhm_peak.maximum,
+                               (bottom_fwhm_peak.maximum - bottom_fwhm_peak.minimum) / 4,
+                               np.max(bottom_prof) - np.min(bottom_prof),
+                               np.min(bottom_prof))
+                bottom_indeces = np.indices(bottom_prof.shape)[0]
+                bottom_fit, _ = curve_fit(split_gauss,
+                                          bottom_indeces,
+                                          bottom_prof,
+                                          bottom_init)
+                bottom_fwhm = abs(bottom_fit[1] - bottom_fit[0]) + (2 * c_coeff * bottom_fit[2])
 
-            tan_theta = self.tan_theta.value
+                tan_theta = self.tan_theta.value
 
-            top_width = top_fwhm * tan_theta * pix_size
-            bottom_width = bottom_fwhm * tan_theta * pix_size
+                top_width = top_fwhm * tan_theta * pix_size
+                bottom_width = bottom_fwhm * tan_theta * pix_size
 
-            self.top_ramp_width.value = top_width
-            self.bottom_ramp_width.value = bottom_width
+                self.top_ramp_width.value = top_width
+                self.bottom_ramp_width.value = bottom_width
 
-            self.slice_width.value = math.sqrt(top_width * bottom_width)
+                self.slice_width.value = math.sqrt(top_width * bottom_width)
+
+            else:
+                # reciprocal would require a negative in coeffs
+                divisor = 100 / self.max_perc.value
+
+                top_fwhm_peak = nth_max_widest_peak(top_prof, divisor)
+                bottom_fwhm_peak = nth_max_widest_peak(bottom_prof, divisor)
+
+                top_init = ((top_fwhm_peak.maximum + top_fwhm_peak.minimum) / 2,
+                            (top_fwhm_peak.maximum - top_fwhm_peak.minimum) / 2,
+                            np.max(top_prof) - np.min(top_prof),
+                            1,
+                            np.min(top_prof))
+                top_indeces = np.indices(top_prof.shape)[0]
+                top_fit, _ = curve_fit(flat_top_gauss,
+                                       top_indeces,
+                                       top_prof,
+                                       top_init)
+                top_coeff = math.sqrt(2 * math.pow(math.log(divisor), 1 / top_fit[3]))
+                top_fwhm = 2 * top_coeff * top_fit[1]
+
+                bottom_init = ((bottom_fwhm_peak.maximum + bottom_fwhm_peak.minimum) / 2,
+                               (bottom_fwhm_peak.maximum - bottom_fwhm_peak.minimum) / 2,
+                               np.max(bottom_prof) - np.min(bottom_prof),
+                               1,
+                               np.min(bottom_prof))
+                bottom_indeces = np.indices(bottom_prof.shape)[0]
+                bottom_fit, _ = curve_fit(flat_top_gauss,
+                                          bottom_indeces,
+                                          bottom_prof,
+                                          bottom_init)
+                bottom_coeff = math.sqrt(2 * math.pow((2 * math.log(divisor)), 1 / bottom_fit[3]))
+                bottom_fwhm = 2 * bottom_coeff * bottom_fit[1]
+
+                tan_theta = self.tan_theta.value
+
+                top_width = top_fwhm * tan_theta * pix_size
+                bottom_width = bottom_fwhm * tan_theta * pix_size
+
+                self.top_ramp_width.value = top_width
+                self.bottom_ramp_width.value = bottom_width
+
+                self.slice_width.value = math.sqrt(top_width * bottom_width)
 
     def load_commands(self):
         self.register_command("Show Profiles", self.show_profiles)
@@ -222,48 +275,91 @@ class MedACRSliceWidth(PhantomModule):
             bottom_x_locs = bottom_indeces * tan_theta * pix_size
 
             plt.clf()
-            plt.plot(top_x_locs, top_prof, label="Top Profile")
 
-            try:
+            if self.fit_type.value is split_gauss:
+                plt.plot(top_x_locs, top_prof, label="Top Profile")
 
-                top_fwhm_peak = nth_max_widest_peak(top_prof, divisor)
-                top_init = (top_fwhm_peak.minimum,
-                            top_fwhm_peak.maximum,
-                            (top_fwhm_peak.maximum - top_fwhm_peak.minimum) / 4,
-                            np.max(top_prof) - np.min(top_prof),
-                            np.min(top_prof))
+                try:
+                    top_fwhm_peak = nth_max_widest_peak(top_prof, divisor)
+                    top_init = (top_fwhm_peak.minimum,
+                                top_fwhm_peak.maximum,
+                                (top_fwhm_peak.maximum - top_fwhm_peak.minimum) / 4,
+                                np.max(top_prof) - np.min(top_prof),
+                                np.min(top_prof))
 
-                top_fit, _ = curve_fit(flat_top_gauss,
-                                       top_indeces,
-                                       top_prof,
-                                       top_init)
+                    top_fit, _ = curve_fit(split_gauss,
+                                           top_indeces,
+                                           top_prof,
+                                           top_init)
 
-                top_fitted = flat_top_gauss(top_indeces, *top_fit)
-                plt.plot(top_x_locs, top_fitted,
-                         label="Top Fit")
+                    top_fitted = split_gauss(top_indeces, *top_fit)
+                    plt.plot(top_x_locs, top_fitted,
+                             label="Top Fit")
 
-            except RuntimeError:
-                pass
+                except RuntimeError:
+                    pass
 
-            plt.plot(bottom_x_locs, bottom_prof, label="Bottom Profile")
+                plt.plot(bottom_x_locs, bottom_prof, label="Bottom Profile")
 
-            try:
-                bottom_fwhm_peak = nth_max_widest_peak(bottom_prof, divisor)
-                bottom_init = (bottom_fwhm_peak.minimum,
-                               bottom_fwhm_peak.maximum,
-                               (bottom_fwhm_peak.maximum - bottom_fwhm_peak.minimum) / 4,
-                               np.max(bottom_prof) - np.min(bottom_prof),
-                               np.min(bottom_prof))
+                try:
+                    bottom_fwhm_peak = nth_max_widest_peak(bottom_prof, divisor)
+                    bottom_init = (bottom_fwhm_peak.minimum,
+                                   bottom_fwhm_peak.maximum,
+                                   (bottom_fwhm_peak.maximum - bottom_fwhm_peak.minimum) / 4,
+                                   np.max(bottom_prof) - np.min(bottom_prof),
+                                   np.min(bottom_prof))
 
-                bottom_fit, _ = curve_fit(flat_top_gauss,
-                                          bottom_indeces,
-                                          bottom_prof,
-                                          bottom_init)
-                bottom_fitted = flat_top_gauss(bottom_indeces, *bottom_fit)
-                plt.plot(bottom_x_locs, bottom_fitted,
-                         label="Bottom Fit")
-            except RuntimeError:
-                pass
+                    bottom_fit, _ = curve_fit(split_gauss,
+                                              bottom_indeces,
+                                              bottom_prof,
+                                              bottom_init)
+                    bottom_fitted = split_gauss(bottom_indeces, *bottom_fit)
+                    plt.plot(bottom_x_locs, bottom_fitted,
+                             label="Bottom Fit")
+                except RuntimeError:
+                    pass
+
+            else:
+                plt.plot(top_x_locs, top_prof, label="Top Profile")
+
+                try:
+                    top_fwhm_peak = nth_max_widest_peak(top_prof, divisor)
+                    bottom_fwhm_peak = nth_max_widest_peak(bottom_prof, divisor)
+
+                    top_init = ((top_fwhm_peak.maximum + top_fwhm_peak.minimum) / 2,
+                                (top_fwhm_peak.maximum - top_fwhm_peak.minimum) / 2,
+                                np.max(top_prof) - np.min(top_prof),
+                                1,
+                                np.min(top_prof))
+                    top_indeces = np.indices(top_prof.shape)[0]
+                    top_fit, _ = curve_fit(flat_top_gauss,
+                                           top_indeces,
+                                           top_prof,
+                                           top_init)
+                    top_fitted = flat_top_gauss(top_indeces, *top_fit)
+                    plt.plot(top_x_locs, top_fitted,
+                             label="Top Fit")
+                except RuntimeError:
+                    pass
+
+                plt.plot(bottom_x_locs, bottom_prof, label="Bottom Profile")
+
+                try:
+                    bottom_init = ((bottom_fwhm_peak.maximum + bottom_fwhm_peak.minimum) / 2,
+                                   (bottom_fwhm_peak.maximum - bottom_fwhm_peak.minimum) / 2,
+                                   np.max(bottom_prof) - np.min(bottom_prof),
+                                   1,
+                                   np.min(bottom_prof))
+                    bottom_indeces = np.indices(bottom_prof.shape)[0]
+                    bottom_fit, _ = curve_fit(flat_top_gauss,
+                                              bottom_indeces,
+                                              bottom_prof,
+                                              bottom_init)
+                    bottom_fitted = flat_top_gauss(bottom_indeces, *bottom_fit)
+                    plt.plot(bottom_x_locs, bottom_fitted,
+                             label="Bottom Fit")
+                except RuntimeError:
+                    pass
 
             plt.legend()
             plt.xlabel("Position (Pixels)")
