@@ -16,6 +16,7 @@ from pumpia_acr_med.modules.ghosting import MedACRGhosting
 from pumpia_acr_med.modules.slice_width import MedACRSliceWidth
 from pumpia_acr_med.modules.slice_pos import MedACRSlicePosition
 from pumpia_acr_med.modules.phantom_width import MedACRPhantomWidth
+from pumpia_acr_med.modules.resolution import MedACRResolution
 
 
 class MedACRrptCollection(BaseCollection):
@@ -35,24 +36,34 @@ class MedACRrptCollection(BaseCollection):
     ghosting1 = MedACRGhosting(verbose_name="Ghosting")
     ghosting2 = MedACRGhosting(verbose_name="Ghosting")
 
+    phantom_width1 = MedACRPhantomWidth(verbose_name="Phantom Width")
+    phantom_width2 = MedACRPhantomWidth(verbose_name="Phantom Width")
+
     slice_width1 = MedACRSliceWidth(verbose_name="Slice Width")
     slice_width2 = MedACRSliceWidth(verbose_name="Slice Width")
 
     slice_pos1 = MedACRSlicePosition(verbose_name="Slice Position")
     slice_pos2 = MedACRSlicePosition(verbose_name="Slice Position")
 
-    phantom_width1 = MedACRPhantomWidth(verbose_name="Phantom Width")
-    phantom_width2 = MedACRPhantomWidth(verbose_name="Phantom Width")
+    resolution1 = MedACRResolution(verbose_name="Resolution")
+    resolution2 = MedACRResolution(verbose_name="Resolution")
 
     snr_output = OutputFrame(verbose_name="SNR Output")
     image1_output = OutputFrame(verbose_name="Image 1 Results")
     image2_output = OutputFrame(verbose_name="Image 2 Results")
 
-    uniformity_window = WindowGroup([uniformity1, uniformity2], verbose_name="Uniformity")
-    ghosting_window = WindowGroup([ghosting1, ghosting2], verbose_name="Ghosting")
-    slice_width_window = WindowGroup([slice_width1, slice_width2], verbose_name="Slice Width")
-    slice_pos_window = WindowGroup([slice_pos1, slice_pos2], verbose_name="Slice Position")
-    phantom_width_window = WindowGroup([phantom_width1, phantom_width2], verbose_name="Phantom Width")
+    uniformity_window = WindowGroup([uniformity1, uniformity2],
+                                    verbose_name="Uniformity")
+    ghosting_window = WindowGroup([ghosting1, ghosting2],
+                                  verbose_name="Ghosting")
+    slice_width_window = WindowGroup([slice_width1, slice_width2],
+                                     verbose_name="Slice Width")
+    slice_pos_window = WindowGroup([slice_pos1, slice_pos2],
+                                   verbose_name="Slice Position")
+    phantom_width_window = WindowGroup([phantom_width1, phantom_width2],
+                                       verbose_name="Phantom Width")
+    resolution_window = WindowGroup([resolution1, resolution2],
+                                    verbose_name="Resolution")
 
     def load_outputs(self):
         self.snr_output.register_output(self.snr.signal)
@@ -67,6 +78,7 @@ class MedACRrptCollection(BaseCollection):
         self.image1_output.register_output(self.slice_pos1.slice_11_pos)
         self.image1_output.register_output(self.phantom_width1.linearity)
         self.image1_output.register_output(self.phantom_width1.distortion)
+        self.image1_output.register_output(self.resolution1.total_mtf)
 
         self.image2_output.register_output(self.uniformity2.uniformity)
         self.image2_output.register_output(self.ghosting2.ghosting)
@@ -75,6 +87,7 @@ class MedACRrptCollection(BaseCollection):
         self.image2_output.register_output(self.slice_pos2.slice_11_pos)
         self.image2_output.register_output(self.phantom_width2.linearity)
         self.image2_output.register_output(self.phantom_width2.distortion)
+        self.image2_output.register_output(self.resolution2.total_mtf)
 
         IOGroup([self.uniformity1.size, self.uniformity2.size])
         IOGroup([self.uniformity1.kernel_bool, self.uniformity2.kernel_bool])
@@ -98,6 +111,7 @@ class MedACRrptCollection(BaseCollection):
                 self.slice_width1.viewer.load_image(image)
                 self.slice_pos1.viewer1.load_image(image)
                 self.phantom_width1.viewer.load_image(image)
+                self.resolution1.viewer.load_image(image)
         elif viewer is self.viewer2:
             if self.viewer2.image is not None:
                 image = self.viewer2.image
@@ -107,3 +121,4 @@ class MedACRrptCollection(BaseCollection):
                 self.slice_width2.viewer.load_image(image)
                 self.slice_pos2.viewer1.load_image(image)
                 self.phantom_width2.viewer.load_image(image)
+                self.resolution2.viewer.load_image(image)
