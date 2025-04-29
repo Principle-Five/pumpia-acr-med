@@ -78,7 +78,7 @@ class MedACRrptCollection(BaseCollection):
         self.image1_output.register_output(self.slice_pos1.slice_11_pos)
         self.image1_output.register_output(self.phantom_width1.linearity)
         self.image1_output.register_output(self.phantom_width1.distortion)
-        self.image1_output.register_output(self.resolution1.total_mtf)
+        self.image1_output.register_output(self.resolution1.total_contrast)
 
         self.image2_output.register_output(self.uniformity2.uniformity)
         self.image2_output.register_output(self.ghosting2.ghosting)
@@ -87,7 +87,7 @@ class MedACRrptCollection(BaseCollection):
         self.image2_output.register_output(self.slice_pos2.slice_11_pos)
         self.image2_output.register_output(self.phantom_width2.linearity)
         self.image2_output.register_output(self.phantom_width2.distortion)
-        self.image2_output.register_output(self.resolution2.total_mtf)
+        self.image2_output.register_output(self.resolution2.total_contrast)
 
         IOGroup([self.uniformity1.size, self.uniformity2.size])
         IOGroup([self.uniformity1.kernel_bool, self.uniformity2.kernel_bool])

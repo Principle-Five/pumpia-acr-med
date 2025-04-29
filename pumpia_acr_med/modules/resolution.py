@@ -1,3 +1,7 @@
+"""
+Calculates the contrast of the 1 mm resolution insert.
+"""
+import math
 import numpy as np
 
 from pumpia.module_handling.modules import PhantomModule
@@ -6,6 +10,7 @@ from pumpia.module_handling.in_outs.viewer_ios import MonochromeDicomViewerIO
 from pumpia.module_handling.in_outs.simple import FloatOutput
 from pumpia.image_handling.roi_structures import RectangleROI, LineROI
 from pumpia.file_handling.dicom_structures import Series, Instance
+from pumpia.utilities.array_utils import nth_max_bounds
 
 from pumpia_acr_med.med_acr_context import MedACRContextManagerGenerator, MedACRContext
 
@@ -24,7 +29,7 @@ LINE_GAP = 2
 
 class MedACRResolution(PhantomModule):
     """
-    Calculates the MTF of the 1mm resolution insert.
+    Calculates the contrast of the 1mm resolution insert.
     """
     context_manager_generator = MedACRContextManagerGenerator()
     show_draw_rois_button = True
@@ -32,9 +37,9 @@ class MedACRResolution(PhantomModule):
 
     viewer = MonochromeDicomViewerIO(row=0, column=0)
 
-    vertical_mtf = FloatOutput(verbose_name="Vertical MTF (%)")
-    horizontal_mtf = FloatOutput(verbose_name="Horizontal MTF (%)")
-    total_mtf = FloatOutput(verbose_name="MTF (%)")
+    vertical_contrast = FloatOutput(verbose_name="Vertical contrast (%)")
+    horizontal_contrast = FloatOutput(verbose_name="Horizontal contrast (%)")
+    total_contrast = FloatOutput(verbose_name="contrast (%)")
 
     main_roi = InputRectangleROI()
     horizontal_line_1 = InputLineROI()
@@ -131,23 +136,24 @@ class MedACRResolution(PhantomModule):
             v_line_gap = round(LINE_GAP * pixel_width)
         v_line_length = LINE_LENGTH * pixel_height
 
-        if not self.main_roi.roi is None:
+        if self.main_roi.roi is not None:
             x_cent_loc = int(np.argmax(self.main_roi.roi.h_profile)) + self.main_roi.roi.xmin
             y_cent_loc = int(np.argmax(self.main_roi.roi.v_profile)) + self.main_roi.roi.ymin
 
+            # -1 required to keep line length as line ROI ends are included
             if vertical_dir[0] == "U":
-                v_ymin = y_cent_loc - round(v_line_length)
+                v_ymin = y_cent_loc - round(v_line_length - 1)
                 v_ymax = y_cent_loc
             else:
                 v_ymin = y_cent_loc
-                v_ymax = y_cent_loc + round(v_line_length)
+                v_ymax = y_cent_loc + round(v_line_length - 1)
 
             if horizontal_dir[1] == "L":
-                h_xmin = x_cent_loc - round(h_line_length)
+                h_xmin = x_cent_loc - round(h_line_length - 1)
                 h_xmax = x_cent_loc
             else:
                 h_xmin = x_cent_loc
-                h_xmax = x_cent_loc + round(h_line_length)
+                h_xmax = x_cent_loc + round(h_line_length - 1)
 
             self.horizontal_line_1.register_roi(LineROI(image,
                                                         h_xmin,
@@ -208,4 +214,78 @@ class MedACRResolution(PhantomModule):
         self.vertical_line_4.viewer = self.viewer
 
     def analyse(self, batch: bool = False):
-        pass
+        horizontal_contrasts: list[float] = []
+        vertical_contrasts: list[float] = []
+
+        if self.horizontal_line_1.roi is not None:
+            hl_1_bounds = nth_max_bounds(self.horizontal_line_1.roi.profile, 2)
+            min_b = math.floor(hl_1_bounds.minimum)
+            max_b = math.ceil(hl_1_bounds.maximum) + 1
+            hl_1_max = np.max(self.horizontal_line_1.roi.profile[min_b:max_b])
+            hl_1_min = np.min(self.horizontal_line_1.roi.profile[min_b:max_b])
+            hl_1_con = (hl_1_max - hl_1_min) / (hl_1_max + hl_1_min)
+            horizontal_contrasts.append(hl_1_con)
+        if self.horizontal_line_2.roi is not None:
+            hl_2_bounds = nth_max_bounds(self.horizontal_line_2.roi.profile, 2)
+            min_b = math.floor(hl_2_bounds.minimum)
+            max_b = math.ceil(hl_2_bounds.maximum) + 1
+            hl_2_max = np.max(self.horizontal_line_2.roi.profile[min_b:max_b])
+            hl_2_min = np.min(self.horizontal_line_2.roi.profile[min_b:max_b])
+            hl_2_con = (hl_2_max - hl_2_min) / (hl_2_max + hl_2_min)
+            horizontal_contrasts.append(hl_2_con)
+        if self.horizontal_line_3.roi is not None:
+            hl_3_bounds = nth_max_bounds(self.horizontal_line_3.roi.profile, 2)
+            min_b = math.floor(hl_3_bounds.minimum)
+            max_b = math.ceil(hl_3_bounds.maximum) + 1
+            hl_3_max = np.max(self.horizontal_line_3.roi.profile[min_b:max_b])
+            hl_3_min = np.min(self.horizontal_line_3.roi.profile[min_b:max_b])
+            hl_3_con = (hl_3_max - hl_3_min) / (hl_3_max + hl_3_min)
+            horizontal_contrasts.append(hl_3_con)
+        if self.horizontal_line_4.roi is not None:
+            hl_4_bounds = nth_max_bounds(self.horizontal_line_4.roi.profile, 2)
+            min_b = math.floor(hl_4_bounds.minimum)
+            max_b = math.ceil(hl_4_bounds.maximum) + 1
+            hl_4_max = np.max(self.horizontal_line_4.roi.profile[min_b:max_b])
+            hl_4_min = np.min(self.horizontal_line_4.roi.profile[min_b:max_b])
+            hl_4_con = (hl_4_max - hl_4_min) / (hl_4_max + hl_4_min)
+            horizontal_contrasts.append(hl_4_con)
+
+        if self.vertical_line_1.roi is not None:
+            vl_1_bounds = nth_max_bounds(self.vertical_line_1.roi.profile, 2)
+            min_b = math.floor(vl_1_bounds.minimum)
+            max_b = math.ceil(vl_1_bounds.maximum) + 1
+            vl_1_max = np.max(self.vertical_line_1.roi.profile[min_b:max_b])
+            vl_1_min = np.min(self.vertical_line_1.roi.profile[min_b:max_b])
+            vl_1_con = (vl_1_max - vl_1_min) / (vl_1_max + vl_1_min)
+            vertical_contrasts.append(vl_1_con)
+        if self.vertical_line_2.roi is not None:
+            vl_2_bounds = nth_max_bounds(self.vertical_line_2.roi.profile, 2)
+            min_b = math.floor(vl_2_bounds.minimum)
+            max_b = math.ceil(vl_2_bounds.maximum) + 1
+            vl_2_max = np.max(self.vertical_line_2.roi.profile[min_b:max_b])
+            vl_2_min = np.min(self.vertical_line_2.roi.profile[min_b:max_b])
+            vl_2_con = (vl_2_max - vl_2_min) / (vl_2_max + vl_2_min)
+            vertical_contrasts.append(vl_2_con)
+        if self.vertical_line_3.roi is not None:
+            vl_3_bounds = nth_max_bounds(self.vertical_line_3.roi.profile, 2)
+            min_b = math.floor(vl_3_bounds.minimum)
+            max_b = math.ceil(vl_3_bounds.maximum) + 1
+            vl_3_max = np.max(self.vertical_line_3.roi.profile[min_b:max_b])
+            vl_3_min = np.min(self.vertical_line_3.roi.profile[min_b:max_b])
+            vl_3_con = (vl_3_max - vl_3_min) / (vl_3_max + vl_3_min)
+            vertical_contrasts.append(vl_3_con)
+        if self.vertical_line_4.roi is not None:
+            vl_4_bounds = nth_max_bounds(self.vertical_line_4.roi.profile, 2)
+            min_b = math.floor(vl_4_bounds.minimum)
+            max_b = math.ceil(vl_4_bounds.maximum) + 1
+            vl_4_max = np.max(self.vertical_line_4.roi.profile[min_b:max_b])
+            vl_4_min = np.min(self.vertical_line_4.roi.profile[min_b:max_b])
+            vl_4_con = (vl_4_max - vl_4_min) / (vl_4_max + vl_4_min)
+            vertical_contrasts.append(vl_4_con)
+
+        h_contrast = 100 * max(horizontal_contrasts)
+        v_contrast = 100 * max(vertical_contrasts)
+
+        self.horizontal_contrast.value = h_contrast
+        self.vertical_contrast.value = v_contrast
+        self.total_contrast.value = (h_contrast + v_contrast) / 2
