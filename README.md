@@ -11,6 +11,7 @@ The collection contains the following tests:
 - Slice Position
 - Phantom Width (Geometric linearity and distortion)
 - Ghosting
+- Resolution (Contrast of 1mm insert)
 
 # Usage
 
