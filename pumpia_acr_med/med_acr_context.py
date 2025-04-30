@@ -403,6 +403,7 @@ class MedACRContextManager(PhantomContextManager):
                             name="Centre",
                             replace=True)
             self.manager.add_roi(cent)
+            self.manager.update_viewers(image)
 
         self.res_insert_var.set(inv_side_map[res_insert_side])
         self.circle_insert_var.set(inv_side_map[circle_insert_side])
