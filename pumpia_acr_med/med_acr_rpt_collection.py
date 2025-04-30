@@ -100,6 +100,9 @@ class MedACRrptCollection(BaseCollection):
         IOGroup([self.phantom_width1.bool_horizontal, self.phantom_width2.bool_horizontal])
         IOGroup([self.phantom_width1.bool_up_slope, self.phantom_width2.bool_up_slope])
         IOGroup([self.phantom_width1.bool_down_slope, self.phantom_width2.bool_down_slope])
+        IOGroup([self.resolution1.override_centre, self.resolution2.override_centre])
+        IOGroup([self.resolution1.x_centre_override, self.resolution2.x_centre_override])
+        IOGroup([self.resolution1.y_centre_override, self.resolution2.y_centre_override])
 
     def on_image_load(self, viewer: BaseViewer) -> None:
         if viewer is self.viewer1:
