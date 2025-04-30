@@ -7,7 +7,7 @@ import numpy as np
 from pumpia.module_handling.modules import PhantomModule
 from pumpia.module_handling.in_outs.roi_ios import BaseInputROI, InputRectangleROI, InputLineROI
 from pumpia.module_handling.in_outs.viewer_ios import MonochromeDicomViewerIO
-from pumpia.module_handling.in_outs.simple import FloatOutput
+from pumpia.module_handling.in_outs.simple import FloatOutput, IntInput, BoolInput
 from pumpia.image_handling.roi_structures import RectangleROI, LineROI
 from pumpia.file_handling.dicom_structures import Series, Instance
 from pumpia.utilities.array_utils import nth_max_bounds
@@ -17,7 +17,7 @@ from pumpia_acr_med.med_acr_context import MedACRContextManagerGenerator, MedACR
 BOX_Y_OFFSET = 28
 BOX_X_OFFSET = -5
 BOX_SIDE_LENGTH = 19
-LINE_LENGTH = 7
+LINE_LENGTH = 8
 LINE_GAP = 2
 
 # step 1: draw big box
@@ -36,6 +36,10 @@ class MedACRResolution(PhantomModule):
     show_analyse_button = True
 
     viewer = MonochromeDicomViewerIO(row=0, column=0)
+
+    override_centre = BoolInput(initial_value=False)
+    x_centre_override = IntInput(initial_value=9)
+    y_centre_override = IntInput(initial_value=9)
 
     vertical_contrast = FloatOutput(verbose_name="Vertical contrast (%)")
     horizontal_contrast = FloatOutput(verbose_name="Horizontal contrast (%)")
@@ -137,8 +141,12 @@ class MedACRResolution(PhantomModule):
         v_line_length = LINE_LENGTH * pixel_height
 
         if self.main_roi.roi is not None:
-            x_cent_loc = int(np.argmax(self.main_roi.roi.h_profile)) + self.main_roi.roi.xmin
-            y_cent_loc = int(np.argmax(self.main_roi.roi.v_profile)) + self.main_roi.roi.ymin
+            if self.override_centre.value:
+                x_cent_loc = self.x_centre_override.value + self.main_roi.roi.xmin
+                y_cent_loc = self.y_centre_override.value + self.main_roi.roi.ymin
+            else:
+                x_cent_loc = int(np.argmax(self.main_roi.roi.h_profile)) + self.main_roi.roi.xmin
+                y_cent_loc = int(np.argmax(self.main_roi.roi.v_profile)) + self.main_roi.roi.ymin
 
             # -1 required to keep line length as line ROI ends are included
             if vertical_dir[0] == "U":
