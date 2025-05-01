@@ -87,7 +87,7 @@ ROI sizes do not follow the ACR guidance, the size of the signal ROI can be give
 
 Slice width is measured by fitting a curve to the profile of the ROIs.
 
-This curve can be selected as either a flat top gaussian given by - where P is the rank:
+This curve can be selected as either a flat top gaussian given by the following, where P is the rank:
 
 $$A * exp\bigg(-\bigg(\frac{(x-x_0)^2}{2\sigma^2}\bigg)^P\bigg) + offset$$
 
@@ -131,7 +131,7 @@ An average of the horizontal and vertical contrasts is reported on the main tab.
 
 Contrast is calculated using:
 
-$$Contrast(\%) = \frac{max-min}{max+min} * 100$$
+$$Contrast(\\%) = \frac{max-min}{max+min} * 100$$
 
 Users can override the position of the central hole in the surrounding ROI, this is normally calculated by taking the position of the maximum of the surrounding ROI's x and y profiles.
 The central hole is the one which is part of both a horizontal and vertical line.
