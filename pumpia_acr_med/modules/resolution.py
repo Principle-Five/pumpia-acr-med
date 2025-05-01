@@ -22,14 +22,11 @@ LINE_LENGTH = 10
 LINE_GAP = 2
 POINT_SEP = 1
 
-# step 1: draw big box
-# step 2: find centre pixel from big box profiles
-# step 3: draw horizontal and vertical lines across rows/columns defined by ACR
-# step 4: get contrast (max-min)/(max+min) for each line
-# step 5: result is maximum contrast for rows/columns
-
 
 def get_contrast(profile: np.ndarray[tuple[int], np.dtype]) -> float:
+    """
+    Get the contrast for a line profile from the 1mm ACR resolution insert
+    """
     bounds = nth_max_bounds(profile, 2)
     if profile[math.floor(bounds.minimum)] > profile[math.ceil(bounds.minimum)]:
         start = math.floor(bounds.minimum)
@@ -103,7 +100,7 @@ class MedACRResolution(PhantomModule):
                                  reset_on_analysis=True)
     freq_contrast = FloatOutput(verbose_name="Frequency Encode Contrast (%)",
                                 reset_on_analysis=True)
-    total_contrast = FloatOutput(verbose_name="Contrast (%)",
+    total_contrast = FloatOutput(verbose_name="1mm Contrast (%)",
                                  reset_on_analysis=True)
 
     main_roi = InputRectangleROI()
