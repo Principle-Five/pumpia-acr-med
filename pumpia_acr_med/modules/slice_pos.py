@@ -170,7 +170,7 @@ class MedACRSlicePosition(PhantomModule):
             and self.slice_11_right_wedge.roi is not None
             and self.slice_1_left_wedge.roi is not None
                 and self.slice_1_right_wedge.roi is not None):
-            if self.wedge_dir == "horizontal":
+            if self.wedge_dir.value[0].lower() == "h":
                 slice_11_left_prof = self.slice_11_left_wedge.roi.h_profile
                 slice_11_right_prof = self.slice_11_right_wedge.roi.h_profile
                 slice_1_left_prof = self.slice_1_left_wedge.roi.h_profile
@@ -215,7 +215,7 @@ class MedACRSlicePosition(PhantomModule):
             and self.slice_11_right_wedge.roi is not None
             and self.slice_1_left_wedge.roi is not None
                 and self.slice_1_right_wedge.roi is not None):
-            if self.wedge_dir == "horizontal":
+            if self.wedge_dir.value[0].lower() == "h":
                 slice_11_left_prof = self.slice_11_left_wedge.roi.h_profile
                 slice_11_right_prof = self.slice_11_right_wedge.roi.h_profile
                 slice_1_left_prof = self.slice_1_left_wedge.roi.h_profile

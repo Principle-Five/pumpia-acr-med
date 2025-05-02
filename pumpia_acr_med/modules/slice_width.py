@@ -150,7 +150,7 @@ class MedACRSliceWidth(PhantomModule):
         if (self.top_ramp.roi is not None
             and self.bottom_ramp.roi is not None
                 and self.viewer.image is not None):
-            if self.ramp_dir.value == "Vertical":
+            if self.ramp_dir.value[0].lower() == "v":
                 top_prof = self.top_ramp.roi.v_profile
                 bottom_prof = self.bottom_ramp.roi.v_profile
                 pix_size = self.viewer.image.pixel_size[1]
@@ -256,7 +256,7 @@ class MedACRSliceWidth(PhantomModule):
         if (self.top_ramp.roi is not None
             and self.bottom_ramp.roi is not None
                 and self.viewer.image is not None):
-            if self.ramp_dir.value == "Vertical":
+            if self.ramp_dir.value[0].lower() == "v":
                 top_prof = self.top_ramp.roi.v_profile
                 bottom_prof = self.bottom_ramp.roi.v_profile
                 pix_size = self.viewer.image.pixel_size[1]
