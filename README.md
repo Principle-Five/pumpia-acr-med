@@ -26,7 +26,7 @@ To use the collection:
 1. Load the folder with the relevant images
 2. Drag and drop the series containing the ACR images into the left viewer of the `Main` tab
 3. Drag and drop the series containing repeat images into the right viewer of the `Main` tab
-4. Generate the ROIs and run analysis
+4. Generate the ROIs and run analysis. If the image has been analysed then the old ROIs may still be visible on the image, it is recommended to regenerate them as in some tests other information is loaded in this process.
 5. Correct the context if required (see below)
     - Re-run generating ROIs
 6. Move any ROIs as required, this should be done through their relevant modules.
