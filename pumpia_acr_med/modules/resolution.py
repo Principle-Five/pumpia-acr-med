@@ -208,12 +208,12 @@ class MedACRResolution(PhantomModule):
         v_line_length = LINE_LENGTH * pixel_height
 
         if self.main_roi.roi is not None:
-            if self.override_centre.value:
-                x_cent_loc = self.x_centre_override.value + self.main_roi.roi.xmin
-                y_cent_loc = self.y_centre_override.value + self.main_roi.roi.ymin
-            else:
-                x_cent_loc = int(np.argmax(self.main_roi.roi.h_profile)) + self.main_roi.roi.xmin
-                y_cent_loc = int(np.argmax(self.main_roi.roi.v_profile)) + self.main_roi.roi.ymin
+            if not self.override_centre.value:
+                self.x_centre_override.value = int(np.argmax(self.main_roi.roi.h_profile))
+                self.y_centre_override.value = int(np.argmax(self.main_roi.roi.v_profile))
+
+            x_cent_loc = self.x_centre_override.value + self.main_roi.roi.xmin
+            y_cent_loc = self.y_centre_override.value + self.main_roi.roi.ymin
 
             # -1 required to keep line length as line ROI ends are included
             if vertical_dir[0] == "U":

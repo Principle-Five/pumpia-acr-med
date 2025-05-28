@@ -116,6 +116,7 @@ A button is provided to show the profiles of the ROIs used.
 ## Phantom Width
 
 The phantom width is used to calculate the geometric linearity and distortion of the image.
+The percentage given is the percentage of the maximum pixel value at which the line profiles define the edge of the phantom.
 Users can select any line profiles they don't want included in the calculations (e.g. if there is a large bubble).
 
 ## Resolution

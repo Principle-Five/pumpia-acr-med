@@ -168,6 +168,8 @@ class MedACRSliceWidth(PhantomModule):
 
                 top_fwhm_peak = nth_max_widest_peak(top_prof, divisor)
                 bottom_fwhm_peak = nth_max_widest_peak(bottom_prof, divisor)
+                bounds = ([0, 0, 0, -np.inf, -np.inf],
+                          [np.inf, np.inf, np.inf, np.inf, np.inf])
 
                 top_init = (top_fwhm_peak.minimum,
                             top_fwhm_peak.maximum,
@@ -178,7 +180,8 @@ class MedACRSliceWidth(PhantomModule):
                 top_fit, _ = curve_fit(split_gauss,
                                        top_indeces,
                                        top_prof,
-                                       top_init)
+                                       top_init,
+                                       bounds=bounds)
                 top_fwhm = abs(top_fit[1] - top_fit[0]) + (2 * c_coeff * top_fit[2])
 
                 bottom_init = (bottom_fwhm_peak.minimum,
@@ -190,7 +193,8 @@ class MedACRSliceWidth(PhantomModule):
                 bottom_fit, _ = curve_fit(split_gauss,
                                           bottom_indeces,
                                           bottom_prof,
-                                          bottom_init)
+                                          bottom_init,
+                                          bounds=bounds)
                 bottom_fwhm = abs(bottom_fit[1] - bottom_fit[0]) + (2 * c_coeff * bottom_fit[2])
 
                 tan_theta = self.tan_theta.value
@@ -209,6 +213,8 @@ class MedACRSliceWidth(PhantomModule):
 
                 top_fwhm_peak = nth_max_widest_peak(top_prof, divisor)
                 bottom_fwhm_peak = nth_max_widest_peak(bottom_prof, divisor)
+                bounds = ([0, 0, -np.inf, 0, -np.inf],
+                          [np.inf, np.inf, np.inf, np.inf, np.inf])
 
                 top_init = ((top_fwhm_peak.maximum + top_fwhm_peak.minimum) / 2,
                             (top_fwhm_peak.maximum - top_fwhm_peak.minimum) / 2,
@@ -219,7 +225,8 @@ class MedACRSliceWidth(PhantomModule):
                 top_fit, _ = curve_fit(flat_top_gauss,
                                        top_indeces,
                                        top_prof,
-                                       top_init)
+                                       top_init,
+                                       bounds=bounds)
                 top_coeff = math.sqrt(2 * math.pow(math.log(divisor), 1 / top_fit[3]))
                 top_fwhm = 2 * top_coeff * top_fit[1]
 
@@ -232,14 +239,15 @@ class MedACRSliceWidth(PhantomModule):
                 bottom_fit, _ = curve_fit(flat_top_gauss,
                                           bottom_indeces,
                                           bottom_prof,
-                                          bottom_init)
+                                          bottom_init,
+                                          bounds=bounds)
                 bottom_coeff = math.sqrt(2 * math.pow((2 * math.log(divisor)), 1 / bottom_fit[3]))
                 bottom_fwhm = 2 * bottom_coeff * bottom_fit[1]
 
                 tan_theta = self.tan_theta.value
 
-                top_width = top_fwhm * tan_theta * pix_size
-                bottom_width = bottom_fwhm * tan_theta * pix_size
+                top_width = abs(top_fwhm * tan_theta * pix_size)
+                bottom_width = abs(bottom_fwhm * tan_theta * pix_size)
 
                 self.top_ramp_width.value = top_width
                 self.bottom_ramp_width.value = bottom_width
@@ -279,6 +287,9 @@ class MedACRSliceWidth(PhantomModule):
             if self.fit_type.value is split_gauss:
                 plt.plot(top_x_locs, top_prof, label="Top Profile")
 
+                bounds = ([0, 0, 0, -np.inf, -np.inf],
+                          [np.inf, np.inf, np.inf, np.inf, np.inf])
+
                 try:
                     top_fwhm_peak = nth_max_widest_peak(top_prof, divisor)
                     top_init = (top_fwhm_peak.minimum,
@@ -290,7 +301,8 @@ class MedACRSliceWidth(PhantomModule):
                     top_fit, _ = curve_fit(split_gauss,
                                            top_indeces,
                                            top_prof,
-                                           top_init)
+                                           top_init,
+                                           bounds=bounds)
 
                     top_fitted = split_gauss(top_indeces, *top_fit)
                     plt.plot(top_x_locs, top_fitted,
@@ -312,7 +324,8 @@ class MedACRSliceWidth(PhantomModule):
                     bottom_fit, _ = curve_fit(split_gauss,
                                               bottom_indeces,
                                               bottom_prof,
-                                              bottom_init)
+                                              bottom_init,
+                                              bounds=bounds)
                     bottom_fitted = split_gauss(bottom_indeces, *bottom_fit)
                     plt.plot(bottom_x_locs, bottom_fitted,
                              label="Bottom Fit")
@@ -321,6 +334,9 @@ class MedACRSliceWidth(PhantomModule):
 
             else:
                 plt.plot(top_x_locs, top_prof, label="Top Profile")
+
+                bounds = ([0, 0, -np.inf, 0, -np.inf],
+                          [np.inf, np.inf, np.inf, np.inf, np.inf])
 
                 try:
                     top_fwhm_peak = nth_max_widest_peak(top_prof, divisor)
@@ -335,7 +351,8 @@ class MedACRSliceWidth(PhantomModule):
                     top_fit, _ = curve_fit(flat_top_gauss,
                                            top_indeces,
                                            top_prof,
-                                           top_init)
+                                           top_init,
+                                           bounds=bounds)
                     top_fitted = flat_top_gauss(top_indeces, *top_fit)
                     plt.plot(top_x_locs, top_fitted,
                              label="Top Fit")
@@ -354,7 +371,8 @@ class MedACRSliceWidth(PhantomModule):
                     bottom_fit, _ = curve_fit(flat_top_gauss,
                                               bottom_indeces,
                                               bottom_prof,
-                                              bottom_init)
+                                              bottom_init,
+                                              bounds=bounds)
                     bottom_fitted = flat_top_gauss(bottom_indeces, *bottom_fit)
                     plt.plot(bottom_x_locs, bottom_fitted,
                              label="Bottom Fit")
