@@ -26,6 +26,7 @@ class MedACRUniformity(PhantomModule):
     context_manager_generator = MedACRContextManagerGenerator()
     show_draw_rois_button = True
     show_analyse_button = True
+    name = "Uniformity"
 
     viewer = MonochromeDicomViewerIO(row=0, column=0)
 
