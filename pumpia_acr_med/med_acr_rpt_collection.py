@@ -16,7 +16,7 @@ from pumpia_acr_med.modules.ghosting import MedACRGhosting
 from pumpia_acr_med.modules.slice_width import MedACRSliceWidth
 from pumpia_acr_med.modules.slice_pos import MedACRSlicePosition
 from pumpia_acr_med.modules.phantom_width import MedACRPhantomWidth
-from pumpia_acr_med.modules.resolution import MedACRResolution
+from pumpia_acr_med.modules.resolution_contrast import MedACRContrastResolution
 
 
 class MedACRrptCollection(BaseCollection):
@@ -46,8 +46,8 @@ class MedACRrptCollection(BaseCollection):
     slice_pos1 = MedACRSlicePosition(verbose_name="Slice Position")
     slice_pos2 = MedACRSlicePosition(verbose_name="Slice Position")
 
-    resolution1 = MedACRResolution(verbose_name="Resolution")
-    resolution2 = MedACRResolution(verbose_name="Resolution")
+    resolution1 = MedACRContrastResolution(verbose_name="Resolution")
+    resolution2 = MedACRContrastResolution(verbose_name="Resolution")
 
     snr_output = OutputFrame(verbose_name="SNR Output")
     image1_output = OutputFrame(verbose_name="Image 1 Results")
