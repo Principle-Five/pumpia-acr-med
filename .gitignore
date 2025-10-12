@@ -42,6 +42,7 @@ GTAGS
 *.py[ocd]
 *.so
 *.mod
+*.dist
 
 # Packages #
 ############
