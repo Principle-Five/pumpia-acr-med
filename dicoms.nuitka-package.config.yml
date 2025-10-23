@@ -1,0 +1,34 @@
+- module-name: "pydicom"
+  data-files:
+    - dirs:
+        - "data"
+
+  implicit-imports:
+    - depends:
+        # all of these are needed to run even if not obviously used
+        - "pydicom.pixels.decoders.base"
+        - "pydicom.pixels.decoders.gdcm"
+        - "pydicom.pixels.decoders.pillow"
+        - "pydicom.pixels.decoders.pyjpegls"
+        - "pydicom.pixels.decoders.pylibjpeg"
+        - "pydicom.pixels.decoders.rle"
+        - "pydicom.pixels.encoders.base"
+        - "pydicom.pixels.encoders.gdcm"
+        - "pydicom.pixels.encoders.native"
+        - "pydicom.pixels.encoders.pyjpegls"
+        - "pydicom.pixels.encoders.pylibjpeg"
+
+- module-name: "libjpeg"
+  data-files:
+    - include-metadata:
+        - "pylibjpeg-libjpeg"
+
+- module-name: "openjpeg"
+  data-files:
+    - include-metadata:
+        - "pylibjpeg-openjpeg"
+
+- module-name: "rle"
+  data-files:
+    - include-metadata:
+        - "pylibjpeg-rle"
