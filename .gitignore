@@ -88,6 +88,7 @@ pip-wheel-metadata
 *.log
 *.sql
 *.sqlite
+*nuitka-crash-report.xml
 
 # Patches #
 ###########

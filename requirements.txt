@@ -1,6 +1,5 @@
 pumpia == 0.5.*
 numpy
 scipy
-pylibjpeg
-pylibjpeg-libjpeg
+pylibjpeg[all]
 matplotlib
