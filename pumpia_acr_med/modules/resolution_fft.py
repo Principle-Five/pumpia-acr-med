@@ -7,11 +7,10 @@ import numpy as np
 from pumpia.module_handling.modules import PhantomModule
 from pumpia.module_handling.in_outs.roi_ios import BaseInputROI, InputRectangleROI, InputLineROI
 from pumpia.module_handling.in_outs.viewer_ios import MonochromeDicomViewerIO
-from pumpia.module_handling.in_outs.simple import FloatOutput, StringOutput, IntInput, BoolInput
+from pumpia.module_handling.in_outs.simple import FloatOutput, StringOutput, PercInput, BoolInput
 from pumpia.image_handling.roi_structures import RectangleROI, LineROI
 from pumpia.file_handling.dicom_structures import Series, Instance
 from pumpia.file_handling.dicom_tags import MRTags
-from pumpia.utilities.array_utils import nth_max_bounds
 
 from pumpia_acr_med.med_acr_context import MedACRContextManagerGenerator, MedACRContext
 
@@ -21,61 +20,18 @@ BOX_SIDE_LENGTH = 19
 LINE_LENGTH = 10
 LINE_GAP = 2
 POINT_SEP = 1
+NUM_PINS = 4
 
 
-def get_contrast(profile: np.ndarray[tuple[int], np.dtype]) -> float:
+def get_fft_contrast(profile: np.ndarray[tuple[int], np.dtype], pixel_width: float, contrast_frequency: float) -> float:
     """
-    Get the contrast for a line profile from the 1mm ACR resolution insert
+    Get the contrast for a line profile using an fft
     """
-    bounds = nth_max_bounds(profile, 2)
-    if profile[math.floor(bounds.minimum)] > profile[math.ceil(bounds.minimum)]:
-        start = math.floor(bounds.minimum)
-    else:
-        start = math.ceil(bounds.minimum)
-
-    if profile[math.floor(bounds.maximum)] > profile[math.ceil(bounds.maximum)]:
-        end = math.floor(bounds.maximum)
-    else:
-        end = math.ceil(bounds.maximum)
-
-    new_prof = profile[start:end + 1]
-    minimum = np.min(new_prof)
-    maximum = np.max(new_prof)
-    half_maximum = (maximum + minimum) / 2
-    mins = list(np.argwhere(new_prof < half_maximum)[:, 0])
-
-    if end - start in mins:
-        mins.remove(end - start)
-    if 0 in mins:
-        mins.remove(0)
-
-    if len(mins) == 0:
-        return 0
-
-    troughs: list[list[int]] = [[mins[0]]]
-    prev_min = mins[0]
-
-    for m in mins[1:]:
-        if m == prev_min + 1:
-            troughs[-1].append(m)
-        else:
-            troughs.append([m])
-        prev_min = m
-
-    contrasts = []
-    prev_t = 0
-    for trough_num, trough in enumerate(troughs):
-        if trough_num + 1 < len(troughs):
-            next_t = min(troughs[trough_num + 1])
-        else:
-            next_t = len(new_prof)
-        left_peak_val = np.mean(new_prof[prev_t:min(trough)])
-        right_peak_val = np.mean(new_prof[max(trough) + 1:next_t])
-        peak_val = (left_peak_val + right_peak_val) / 2
-        trough_val = np.mean(new_prof[min(trough):max(trough) + 1])
-        contrasts.append((peak_val - trough_val) / (peak_val + trough_val))
-
-    return min(contrasts)
+    fft_signal = np.fft.rfft(profile, 2 * profile.shape[0])
+    abs_fft = np.abs(fft_signal)
+    abs_fft = abs_fft / abs_fft[0]
+    locs = np.fft.rfftfreq(2 * profile.shape[0], d=pixel_width)
+    return np.interp(contrast_frequency, locs, abs_fft)
 
 
 class MedACRResolution(PhantomModule):
@@ -89,9 +45,8 @@ class MedACRResolution(PhantomModule):
 
     viewer = MonochromeDicomViewerIO(row=0, column=0)
 
-    override_centre = BoolInput(initial_value=False)
-    x_centre_override = IntInput(initial_value=9)
-    y_centre_override = IntInput(initial_value=9)
+    auto_position_lines = BoolInput(True)
+    resolution_percentage = PercInput(50)
 
     pixel_size_vertical = FloatOutput()
     pixel_size_horizontal = FloatOutput()
@@ -105,17 +60,10 @@ class MedACRResolution(PhantomModule):
                                  reset_on_analysis=True)
 
     main_roi = InputRectangleROI()
-    horizontal_line_1 = InputLineROI()
-    horizontal_line_2 = InputLineROI()
-    horizontal_line_3 = InputLineROI()
-    horizontal_line_4 = InputLineROI()
-    vertical_line_1 = InputLineROI()
-    vertical_line_2 = InputLineROI()
-    vertical_line_3 = InputLineROI()
-    vertical_line_4 = InputLineROI()
+    horizontal_line = InputLineROI()
+    vertical_line = InputLineROI()
 
     def draw_rois(self, context: MedACRContext, batch: bool = False) -> None:
-
         if isinstance(self.viewer.image, Instance):
             image = self.viewer.image.series
         elif isinstance(self.viewer.image, Series):
@@ -196,81 +144,18 @@ class MedACRResolution(PhantomModule):
                                                 box_width,
                                                 box_height))
 
-        if horizontal_dir[0] == "U":
-            h_line_gap = round(-LINE_GAP * pixel_height)
-        else:
-            h_line_gap = round(LINE_GAP * pixel_height)
-        h_line_length = LINE_LENGTH * pixel_width
-
-        if vertical_dir[1] == "L":
-            v_line_gap = round(-LINE_GAP * pixel_width)
-        else:
-            v_line_gap = round(LINE_GAP * pixel_width)
-        v_line_length = LINE_LENGTH * pixel_height
-
-        if self.main_roi.roi is not None:
-            if not self.override_centre.value:
-                self.x_centre_override.value = int(np.argmax(self.main_roi.roi.h_profile))
-                self.y_centre_override.value = int(np.argmax(self.main_roi.roi.v_profile))
-
-            x_cent_loc = self.x_centre_override.value + self.main_roi.roi.xmin
-            y_cent_loc = self.y_centre_override.value + self.main_roi.roi.ymin
-
-            # -1 required to keep line length as line ROI ends are included
-            if vertical_dir[0] == "U":
-                v_ymin = y_cent_loc - round(v_line_length - 1)
-                v_ymax = y_cent_loc
-            else:
-                v_ymin = y_cent_loc
-                v_ymax = y_cent_loc + round(v_line_length - 1)
-
-            if horizontal_dir[1] == "L":
-                h_xmin = x_cent_loc - round(h_line_length - 1)
-                h_xmax = x_cent_loc
-            else:
-                h_xmin = x_cent_loc
-                h_xmax = x_cent_loc + round(h_line_length - 1)
-
-            self.horizontal_line_1.register_roi(LineROI(image,
-                                                        h_xmin,
-                                                        y_cent_loc,
-                                                        h_xmax,
-                                                        y_cent_loc))
-            self.horizontal_line_2.register_roi(LineROI(image,
-                                                        h_xmin,
-                                                        y_cent_loc + h_line_gap,
-                                                        h_xmax,
-                                                        y_cent_loc + h_line_gap))
-            self.horizontal_line_3.register_roi(LineROI(image,
-                                                        h_xmin,
-                                                        y_cent_loc + 2 * h_line_gap,
-                                                        h_xmax,
-                                                        y_cent_loc + 2 * h_line_gap))
-            self.horizontal_line_4.register_roi(LineROI(image,
-                                                        h_xmin,
-                                                        y_cent_loc + 3 * h_line_gap,
-                                                        h_xmax,
-                                                        y_cent_loc + 3 * h_line_gap))
-            self.vertical_line_1.register_roi(LineROI(image,
-                                                      x_cent_loc,
-                                                      v_ymin,
-                                                      x_cent_loc,
-                                                      v_ymax))
-            self.vertical_line_2.register_roi(LineROI(image,
-                                                      x_cent_loc + v_line_gap,
-                                                      v_ymin,
-                                                      x_cent_loc + v_line_gap,
-                                                      v_ymax))
-            self.vertical_line_3.register_roi(LineROI(image,
-                                                      x_cent_loc + 2 * v_line_gap,
-                                                      v_ymin,
-                                                      x_cent_loc + 2 * v_line_gap,
-                                                      v_ymax))
-            self.vertical_line_4.register_roi(LineROI(image,
-                                                      x_cent_loc + 3 * v_line_gap,
-                                                      v_ymin,
-                                                      x_cent_loc + 3 * v_line_gap,
-                                                      v_ymax))
+        horizontal_line_length = math.ceil(2 * NUM_PINS * POINT_SEP / self.pixel_size_horizontal.value)
+        vertical_line_length = math.ceil(2 * NUM_PINS * POINT_SEP / self.pixel_size_vertical.value)
+        self.horizontal_line.register_roi(LineROI(image,
+                                                  box_xmin,
+                                                  box_ymin,
+                                                  box_xmin + horizontal_line_length,
+                                                  box_ymin))
+        self.vertical_line.register_roi(LineROI(image,
+                                                box_xmin,
+                                                box_ymin,
+                                                box_xmin,
+                                                box_ymin + vertical_line_length))
 
     def post_roi_register(self, roi_input: BaseInputROI):
         if (roi_input.roi is not None
@@ -280,47 +165,79 @@ class MedACRResolution(PhantomModule):
 
     def link_rois_viewers(self):
         self.main_roi.viewer = self.viewer
-        self.horizontal_line_1.viewer = self.viewer
-        self.horizontal_line_2.viewer = self.viewer
-        self.horizontal_line_3.viewer = self.viewer
-        self.horizontal_line_4.viewer = self.viewer
-        self.vertical_line_1.viewer = self.viewer
-        self.vertical_line_2.viewer = self.viewer
-        self.vertical_line_3.viewer = self.viewer
-        self.vertical_line_4.viewer = self.viewer
+        self.horizontal_line.viewer = self.viewer
+        self.vertical_line.viewer = self.viewer
 
     def analyse(self, batch: bool = False):
-        horizontal_contrasts: list[float] = []
-        vertical_contrasts: list[float] = []
+        horizontal_max_contrast: float = 0
+        vertical_max_contrast: float = 0
+        contrast_frequency = 1 / (2 * POINT_SEP)
+        if self.auto_position_lines.value:
+            if self.viewer.image is not None:
+                image = self.viewer.image
+            else:
+                return
 
-        if self.horizontal_line_1.roi is not None:
-            horizontal_contrasts.append(
-                get_contrast(self.horizontal_line_1.roi.profile))  # type: ignore
-        if self.horizontal_line_2.roi is not None:
-            horizontal_contrasts.append(
-                get_contrast(self.horizontal_line_2.roi.profile))  # type: ignore
-        if self.horizontal_line_3.roi is not None:
-            horizontal_contrasts.append(
-                get_contrast(self.horizontal_line_3.roi.profile))  # type: ignore
-        if self.horizontal_line_4.roi is not None:
-            horizontal_contrasts.append(
-                get_contrast(self.horizontal_line_4.roi.profile))  # type: ignore
+            if self.main_roi.roi is not None:
+                roi = self.main_roi.roi
+            else:
+                return
 
-        if self.vertical_line_1.roi is not None:
-            vertical_contrasts.append(
-                get_contrast(self.vertical_line_1.roi.profile))  # type: ignore
-        if self.vertical_line_2.roi is not None:
-            vertical_contrasts.append(
-                get_contrast(self.vertical_line_2.roi.profile))  # type: ignore
-        if self.vertical_line_3.roi is not None:
-            vertical_contrasts.append(
-                get_contrast(self.vertical_line_3.roi.profile))  # type: ignore
-        if self.vertical_line_4.roi is not None:
-            vertical_contrasts.append(
-                get_contrast(self.vertical_line_4.roi.profile))  # type: ignore
+            horizontal_max_position: tuple[int, int] = 0, 0
+            vertical_max_position: tuple[int, int] = 0, 0
+            horizontal_line_length = math.ceil(2 * NUM_PINS * POINT_SEP / self.pixel_size_horizontal.value)
+            vertical_line_length = math.ceil(2 * NUM_PINS * POINT_SEP / self.pixel_size_vertical.value)
+            xmax = roi.width - horizontal_line_length
+            ymax = roi.height - vertical_line_length
+            line_min_vals = np.max(roi.pixel_array) * self.resolution_percentage.value / 100
 
-        h_contrast = 100 * max(horizontal_contrasts)
-        v_contrast = 100 * max(vertical_contrasts)
+            for x in range(roi.width):
+                for y in range(roi.height):
+                    if x <= xmax:
+                        profile = roi.pixel_array[y, x:x + horizontal_line_length]
+                        if np.count_nonzero(profile >= line_min_vals) >= NUM_PINS:
+                            contrast = get_fft_contrast(profile,
+                                                        self.pixel_size_horizontal.value,
+                                                        contrast_frequency)
+                            if contrast > horizontal_max_contrast:
+                                horizontal_max_contrast = contrast
+                                horizontal_max_position = x, y
+                    if y <= ymax:
+                        profile = roi.pixel_array[y:y + vertical_line_length, x]
+                        if np.count_nonzero(profile >= line_min_vals) >= NUM_PINS:
+                            contrast = get_fft_contrast(profile,
+                                                        self.pixel_size_vertical.value,
+                                                        contrast_frequency)
+                            if contrast > vertical_max_contrast:
+                                vertical_max_contrast = contrast
+                                vertical_max_position = x, y
+
+            # -1 required to keep line length as line ROI ends are included
+            self.horizontal_line.register_roi(LineROI(image,
+                                                      horizontal_max_position[0] + roi.xmin,
+                                                      horizontal_max_position[1] + roi.ymin,
+                                                      horizontal_max_position[0] + horizontal_line_length + roi.xmin - 1,
+                                                      horizontal_max_position[1] + roi.ymin))
+            self.vertical_line.register_roi(LineROI(image,
+                                                    vertical_max_position[0] + roi.xmin,
+                                                    vertical_max_position[1] + roi.ymin,
+                                                    vertical_max_position[0] + roi.xmin,
+                                                    vertical_max_position[1] + vertical_line_length + roi.ymin - 1))
+            self.update_viewers()
+
+        else:
+            if (self.horizontal_line.roi is None
+                    or self.vertical_line.roi is None):
+                return
+            horizontal_max_contrast = get_fft_contrast(self.horizontal_line.roi.profile,  # pyright: ignore[reportArgumentType]
+                                                       self.pixel_size_horizontal.value,
+                                                       contrast_frequency)
+            vertical_max_contrast = get_fft_contrast(self.vertical_line.roi.profile,  # pyright: ignore[reportArgumentType]
+                                                     self.pixel_size_vertical.value,
+                                                     contrast_frequency)
+
+        h_contrast = 100 * horizontal_max_contrast
+        v_contrast = 100 * vertical_max_contrast
 
         if self.phase_dir.value == "ROW":
             self.phase_contrast.value = h_contrast

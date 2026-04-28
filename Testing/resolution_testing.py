@@ -23,8 +23,8 @@ def square_wave_integral(x: np.ndarray | float, amp: float = 1, width: float = 1
     The integral of a square wave from 0 to x.
     The square wave is defined by
 
-    amp (0 < x < width)
-    0 (width < x < 2*width)
+    amp (0 < x mod 2*width < width)
+    0 (width < x mod 2*width < 2*width)
 
 
     Parameters
@@ -76,8 +76,9 @@ def model_signal(pixel_width: float,
     return signal
 
 
-class ContextTest(BaseModule):
+class ResolutionTest(BaseModule):
     context_manager_generator = MedACRContextManagerGenerator()
+    name = "Resolution Test"
 
     line = InputLineROI()
     num_peaks = IntInput(4)
@@ -144,7 +145,7 @@ class ContextTest(BaseModule):
                     fft_ax.plot(locs, imag_fft, label="Imaginary")
 
                 fft_ax.legend()
-                fft_ax.set_xlabel("Frequency (mm-1)")
+                fft_ax.set_xlabel("Frequency ($mm^{-1}$)")
                 fft_ax.set_ylabel("Value")
                 fft_ax.set_title("ROI FFT")
                 fig.tight_layout()
@@ -158,8 +159,8 @@ class ContextTest(BaseModule):
         zeros = [0] * n
         ones = [1] * n
         signal = list(np.roll(((ones + zeros) * n_peaks), roll))
-        # point_5s = [0.5] * n
-        # signal = list(np.roll(((ones + zeros) * (n_peaks // 2) + (point_5s + zeros) + (ones + zeros) * (n_peaks // 2 - 1)), roll))
+        # point_5s = [0.5]
+        # signal = list(np.roll(((point_5s + ones + point_5s + zeros) * n_peaks), roll))
         combo = ([0] * padding) + signal + ([0] * padding)
         line = np.array(combo)
         line_fft = np.fft.rfft(line)
@@ -175,6 +176,7 @@ class ContextTest(BaseModule):
         sig_ax, fft_ax = axes
 
         sig_ax.plot(combo)
+        sig_ax.set_title("Signal")
 
         if self.show_absolute.value:
             fft_ax.plot(locs, abs_fft, label="Absolute")
@@ -184,7 +186,7 @@ class ContextTest(BaseModule):
             fft_ax.plot(locs, imag_fft, label="Imaginary")
 
         fft_ax.legend()
-        fft_ax.set_xlabel("Frequency (mm-1)")
+        fft_ax.set_xlabel("Frequency ($mm^{-1}$)")
         fft_ax.set_ylabel("Value")
         fft_ax.set_title("ROI FFT")
         fig.tight_layout()
@@ -223,6 +225,7 @@ class ContextTest(BaseModule):
         sig_ax, fft_ax = axes
 
         sig_ax.plot(points[:-1], signal)
+        sig_ax.set_title("Signal")
 
         if self.show_absolute.value:
             fft_ax.plot(locs, abs_fft, label="Absolute")
@@ -232,7 +235,7 @@ class ContextTest(BaseModule):
             fft_ax.plot(locs, imag_fft, label="Imaginary")
 
         fft_ax.legend()
-        fft_ax.set_xlabel("Frequency (mm-1)")
+        fft_ax.set_xlabel("Frequency ($mm^{-1}$)")
         fft_ax.set_ylabel("Value")
         fft_ax.set_title("ROI FFT")
         fig.tight_layout()
@@ -289,8 +292,9 @@ class ContextTest(BaseModule):
         heatmap_axes.set_xlabel("Offset (mm)")
         heatmap_axes.set_title("0.5$mm^{-1}$ Frequency Ratio")
         fig.colorbar(heatmap, ax=heatmap_axes)
+        fig.tight_layout()
         fig.show()
 
 
 if __name__ == "__main__":
-    ContextTest.run()
+    ResolutionTest.run()

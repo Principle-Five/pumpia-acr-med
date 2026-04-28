@@ -16,7 +16,8 @@ from pumpia_acr_med.modules.ghosting import MedACRGhosting
 from pumpia_acr_med.modules.slice_width import MedACRSliceWidth
 from pumpia_acr_med.modules.slice_pos import MedACRSlicePosition
 from pumpia_acr_med.modules.phantom_width import MedACRPhantomWidth
-from pumpia_acr_med.modules.resolution_contrast import MedACRContrastResolution
+# from pumpia_acr_med.modules.resolution_contrast import MedACRContrastResolution
+from pumpia_acr_med.modules.resolution_fft import MedACRResolution
 
 
 class MedACRrptCollection(BaseCollection):
@@ -46,8 +47,8 @@ class MedACRrptCollection(BaseCollection):
     slice_pos1 = MedACRSlicePosition(verbose_name="Slice Position")
     slice_pos2 = MedACRSlicePosition(verbose_name="Slice Position")
 
-    resolution1 = MedACRContrastResolution(verbose_name="Resolution")
-    resolution2 = MedACRContrastResolution(verbose_name="Resolution")
+    resolution1 = MedACRResolution(verbose_name="Resolution")
+    resolution2 = MedACRResolution(verbose_name="Resolution")
 
     snr_output = OutputFrame(verbose_name="SNR Output")
     image1_output = OutputFrame(verbose_name="Image 1 Results")
@@ -101,9 +102,8 @@ class MedACRrptCollection(BaseCollection):
         IOGroup([self.phantom_width1.bool_horizontal, self.phantom_width2.bool_horizontal])
         IOGroup([self.phantom_width1.bool_up_slope, self.phantom_width2.bool_up_slope])
         IOGroup([self.phantom_width1.bool_down_slope, self.phantom_width2.bool_down_slope])
-        IOGroup([self.resolution1.override_centre, self.resolution2.override_centre])
-        IOGroup([self.resolution1.x_centre_override, self.resolution2.x_centre_override])
-        IOGroup([self.resolution1.y_centre_override, self.resolution2.y_centre_override])
+        IOGroup([self.resolution1.resolution_percentage, self.resolution2.resolution_percentage])
+        IOGroup([self.resolution1.auto_position_lines, self.resolution2.auto_position_lines])
 
     def on_image_load(self, viewer: BaseViewer) -> None:
         if viewer is self.viewer1:
@@ -126,3 +126,7 @@ class MedACRrptCollection(BaseCollection):
                 self.slice_pos2.viewer1.load_image(image)
                 self.phantom_width2.viewer.load_image(image)
                 self.resolution2.viewer.load_image(image)
+
+    def run_analysis(self) -> None:
+        super().run_analysis()
+        self.update_viewers()
