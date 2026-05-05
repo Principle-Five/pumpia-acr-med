@@ -47,13 +47,11 @@ def square_wave_integral(x: np.ndarray | float, amp: float = 1, width: float = 1
     zero_pt = ((0 - offset) / (2 * width)) - 0.5
     integral = (amp
                 * width
-                * (np.abs(0.5 + (x % 1))
+                * ((np.abs(0.5 + (x % 1))
                    + np.abs(0.5 - (x % 1))
                    + np.floor(x))
-                + (amp
-                   * width
-                   * (np.abs(0.5 + (zero_pt % 1))
-                      + np.abs(0.5 - (zero_pt % 1))
+                   + (np.abs(0.5 + (zero_pt % 1))
+                   + np.abs(0.5 - (zero_pt % 1))
                       + np.floor(zero_pt))))
     return integral
 
@@ -218,6 +216,7 @@ class ResolutionTest(BaseModule):
         real_fft = np.real(fft_signal)
         imag_fft = np.imag(fft_signal)
         locs = np.fft.rfftfreq(10 * signal.shape[0], d=pixel_width)
+        print(np.interp(0.5, locs, abs_fft))
 
         fig = plt.gcf()
         fig.clear()

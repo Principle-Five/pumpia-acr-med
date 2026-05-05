@@ -17,7 +17,7 @@ from pumpia_acr_med.modules.slice_width import MedACRSliceWidth
 from pumpia_acr_med.modules.slice_pos import MedACRSlicePosition
 from pumpia_acr_med.modules.phantom_width import MedACRPhantomWidth
 # from pumpia_acr_med.modules.resolution_contrast import MedACRContrastResolution
-from pumpia_acr_med.modules.resolution_fft import MedACRResolution
+from pumpia_acr_med.modules.resolution import MedACRResolution
 
 
 class MedACRrptCollection(BaseCollection):
@@ -104,6 +104,7 @@ class MedACRrptCollection(BaseCollection):
         IOGroup([self.phantom_width1.bool_down_slope, self.phantom_width2.bool_down_slope])
         IOGroup([self.resolution1.resolution_percentage, self.resolution2.resolution_percentage])
         IOGroup([self.resolution1.auto_position_lines, self.resolution2.auto_position_lines])
+        IOGroup([self.resolution1.resolution_type, self.resolution2.resolution_type])
 
     def on_image_load(self, viewer: BaseViewer) -> None:
         if viewer is self.viewer1:

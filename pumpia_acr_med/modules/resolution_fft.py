@@ -3,6 +3,7 @@ Calculates the contrast of the 1 mm resolution insert.
 """
 import math
 import numpy as np
+from scipy.optimize import minimize_scalar
 
 from pumpia.module_handling.modules import PhantomModule
 from pumpia.module_handling.in_outs.roi_ios import BaseInputROI, InputRectangleROI, InputLineROI
@@ -21,20 +22,102 @@ LINE_LENGTH = 10
 LINE_GAP = 2
 POINT_SEP = 1
 NUM_PINS = 4
+FFT_MULT = 10
 
 
-def get_fft_contrast(profile: np.ndarray[tuple[int], np.dtype], pixel_width: float, contrast_frequency: float) -> float:
+def fft_contrast(profile: np.ndarray[tuple[int], np.dtype],
+                 pixel_width: float,
+                 contrast_frequency: float) -> float:
     """
     Get the contrast for a line profile using an fft
     """
-    fft_signal = np.fft.rfft(profile, 2 * profile.shape[0])
+    fft_signal = np.fft.rfft(profile, FFT_MULT * profile.shape[0])
     abs_fft = np.abs(fft_signal)
-    abs_fft = abs_fft / abs_fft[0]
-    locs = np.fft.rfftfreq(2 * profile.shape[0], d=pixel_width)
-    return np.interp(contrast_frequency, locs, abs_fft)
+    locs = np.fft.rfftfreq(FFT_MULT * profile.shape[0], d=pixel_width)
+    return np.interp(contrast_frequency, locs, abs_fft) / abs_fft[0]
 
 
-class MedACRResolution(PhantomModule):
+def square_wave_integral(x: np.ndarray | float, width: float = 1, offset: float = 0):
+    """
+    The integral of a square wave from 0 to x.
+    The square wave is defined by
+
+    1 (0 < x mod 2*width < width)
+    0 (width < x mod 2*width < 2*width)
+
+
+    Parameters
+    ----------
+    x : np.ndarray | float
+    width : float, optional
+        Width of a peak of the square wave.
+        The wavelength is 2*width.
+    offset : float, optional
+        The offset of the square wave.
+        If a mutiple of 2*width then it is equivelant to 0.
+
+    Returns
+    -------
+    The integral of the square wave up to x.
+    """
+    x = ((x - offset) / (2 * width)) - 0.5
+    zero_pt = ((0 - offset) / (2 * width)) - 0.5
+    integral = (width
+                * ((np.abs(0.5 + (x % 1))
+                    + np.abs(0.5 - (x % 1))
+                    + np.floor(x))
+                    + (np.abs(0.5 + (zero_pt % 1))
+                       + np.abs(0.5 - (zero_pt % 1))
+                       + np.floor(zero_pt))))
+    return integral
+
+
+def model_signal(offset: float,
+                 pixel_width: float,
+                 wave_peak_width: float,
+                 num_peaks: int,
+                 num_samples: int) -> np.ndarray:
+    points = np.arange(0, num_samples + 1, 1) * pixel_width
+    raw_signal = square_wave_integral(points, wave_peak_width, offset)
+    raw_signal[points < offset] = square_wave_integral(offset, wave_peak_width, offset)
+    max_point = offset + 2 * wave_peak_width * num_peaks
+    raw_signal[points > max_point] = square_wave_integral(max_point, wave_peak_width, offset)
+    signal = np.diff(raw_signal)
+    return signal
+
+
+def model_neg_signal_fft_contrast(offset: float,
+                                  pixel_width: float,
+                                  wave_peak_width: float,
+                                  num_peaks: int,
+                                  num_samples: int,
+                                  contrast_frequency: float) -> float:
+    signal = model_signal(offset,
+                          pixel_width,
+                          wave_peak_width,
+                          num_peaks,
+                          num_samples)
+    return -fft_contrast(signal,
+                         pixel_width,
+                         contrast_frequency)
+
+
+def maximum_frequency_ratio(pixel_width: float,
+                            wave_peak_width: float,
+                            num_peaks: int,
+                            num_samples: int,
+                            contrast_frequency: float) -> float:
+    optimum = minimize_scalar(model_neg_signal_fft_contrast,
+                              args=(pixel_width,
+                                    wave_peak_width,
+                                    num_peaks,
+                                    num_samples,
+                                    contrast_frequency),
+                              bounds=(0, pixel_width))
+    return -optimum.fun
+
+
+class MedACRFFTResolution(PhantomModule):
     """
     Calculates the contrast of the 1mm resolution insert.
     """
@@ -56,8 +139,10 @@ class MedACRResolution(PhantomModule):
                                  reset_on_analysis=True)
     freq_contrast = FloatOutput(verbose_name="Frequency Encode Contrast (%)",
                                 reset_on_analysis=True)
-    total_contrast = FloatOutput(verbose_name="1mm Contrast (%)",
+    total_contrast = FloatOutput(verbose_name="Average Contrast (%)",
                                  reset_on_analysis=True)
+    best_contrast = FloatOutput(verbose_name="Theoretical Best Contrast (%)",
+                                reset_on_analysis=True)
 
     main_roi = InputRectangleROI()
     horizontal_line = InputLineROI()
@@ -191,23 +276,29 @@ class MedACRResolution(PhantomModule):
             ymax = roi.height - vertical_line_length
             line_min_vals = np.max(roi.pixel_array) * self.resolution_percentage.value / 100
 
+            self.best_contrast.value = 100 * maximum_frequency_ratio(self.pixel_size_horizontal.value,
+                                                                     POINT_SEP,
+                                                                     NUM_PINS,
+                                                                     horizontal_line_length,
+                                                                     contrast_frequency)
+
             for x in range(roi.width):
                 for y in range(roi.height):
                     if x <= xmax:
                         profile = roi.pixel_array[y, x:x + horizontal_line_length]
                         if np.count_nonzero(profile >= line_min_vals) >= NUM_PINS:
-                            contrast = get_fft_contrast(profile,
-                                                        self.pixel_size_horizontal.value,
-                                                        contrast_frequency)
+                            contrast = fft_contrast(profile,
+                                                    self.pixel_size_horizontal.value,
+                                                    contrast_frequency)
                             if contrast > horizontal_max_contrast:
                                 horizontal_max_contrast = contrast
                                 horizontal_max_position = x, y
                     if y <= ymax:
                         profile = roi.pixel_array[y:y + vertical_line_length, x]
                         if np.count_nonzero(profile >= line_min_vals) >= NUM_PINS:
-                            contrast = get_fft_contrast(profile,
-                                                        self.pixel_size_vertical.value,
-                                                        contrast_frequency)
+                            contrast = fft_contrast(profile,
+                                                    self.pixel_size_vertical.value,
+                                                    contrast_frequency)
                             if contrast > vertical_max_contrast:
                                 vertical_max_contrast = contrast
                                 vertical_max_position = x, y
@@ -223,18 +314,17 @@ class MedACRResolution(PhantomModule):
                                                     vertical_max_position[1] + roi.ymin,
                                                     vertical_max_position[0] + roi.xmin,
                                                     vertical_max_position[1] + vertical_line_length + roi.ymin - 1))
-            self.update_viewers()
 
         else:
             if (self.horizontal_line.roi is None
                     or self.vertical_line.roi is None):
                 return
-            horizontal_max_contrast = get_fft_contrast(self.horizontal_line.roi.profile,  # pyright: ignore[reportArgumentType]
-                                                       self.pixel_size_horizontal.value,
-                                                       contrast_frequency)
-            vertical_max_contrast = get_fft_contrast(self.vertical_line.roi.profile,  # pyright: ignore[reportArgumentType]
-                                                     self.pixel_size_vertical.value,
-                                                     contrast_frequency)
+            horizontal_max_contrast = fft_contrast(self.horizontal_line.roi.profile,  # pyright: ignore[reportArgumentType]
+                                                   self.pixel_size_horizontal.value,
+                                                   contrast_frequency)
+            vertical_max_contrast = fft_contrast(self.vertical_line.roi.profile,  # pyright: ignore[reportArgumentType]
+                                                 self.pixel_size_vertical.value,
+                                                 contrast_frequency)
 
         h_contrast = 100 * horizontal_max_contrast
         v_contrast = 100 * vertical_max_contrast
