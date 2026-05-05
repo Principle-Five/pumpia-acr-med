@@ -4,7 +4,6 @@ Calculates the contrast of the 1 mm resolution insert.
 import math
 import numpy as np
 from scipy.optimize import minimize_scalar
-from typing import Callable
 
 from pumpia.module_handling.modules import PhantomModule
 from pumpia.module_handling.in_outs.roi_ios import BaseInputROI, InputRectangleROI, InputLineROI
