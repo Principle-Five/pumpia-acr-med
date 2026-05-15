@@ -229,8 +229,8 @@ class MedACRFFTResolution(PhantomModule):
                                                 box_width,
                                                 box_height))
 
-        horizontal_line_length = math.ceil(2 * NUM_PINS * POINT_SEP / self.pixel_size_horizontal.value)
-        vertical_line_length = math.ceil(2 * NUM_PINS * POINT_SEP / self.pixel_size_vertical.value)
+        horizontal_line_length = math.floor(2 * NUM_PINS * POINT_SEP / self.pixel_size_horizontal.value)
+        vertical_line_length = math.floor(2 * NUM_PINS * POINT_SEP / self.pixel_size_vertical.value)
         self.horizontal_line.register_roi(LineROI(image,
                                                   box_xmin,
                                                   box_ymin,
@@ -270,8 +270,8 @@ class MedACRFFTResolution(PhantomModule):
 
             horizontal_max_position: tuple[int, int] = 0, 0
             vertical_max_position: tuple[int, int] = 0, 0
-            horizontal_line_length = math.ceil(2 * NUM_PINS * POINT_SEP / self.pixel_size_horizontal.value)
-            vertical_line_length = math.ceil(2 * NUM_PINS * POINT_SEP / self.pixel_size_vertical.value)
+            horizontal_line_length = math.floor(2 * NUM_PINS * POINT_SEP / self.pixel_size_horizontal.value)
+            vertical_line_length = math.floor(2 * NUM_PINS * POINT_SEP / self.pixel_size_vertical.value)
             xmax = roi.width - horizontal_line_length
             ymax = roi.height - vertical_line_length
             line_min_vals = np.max(roi.pixel_array) * self.resolution_percentage.value / 100

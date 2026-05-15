@@ -31,15 +31,15 @@ def get_contrast(profile: np.ndarray[tuple[int], np.dtype]) -> float:
     Get the contrast for a line profile from the 1mm ACR resolution insert
     """
     bounds = nth_max_bounds(profile, 2)
-    if profile[math.floor(bounds.minimum)] > profile[math.ceil(bounds.minimum)]:
+    if profile[math.floor(bounds.minimum)] > profile[math.floor(bounds.minimum)]:
         start = math.floor(bounds.minimum)
     else:
-        start = math.ceil(bounds.minimum)
+        start = math.floor(bounds.minimum)
 
-    if profile[math.floor(bounds.maximum)] > profile[math.ceil(bounds.maximum)]:
+    if profile[math.floor(bounds.maximum)] > profile[math.floor(bounds.maximum)]:
         end = math.floor(bounds.maximum)
     else:
-        end = math.ceil(bounds.maximum)
+        end = math.floor(bounds.maximum)
 
     new_prof = profile[start:end + 1]
     minimum = np.min(new_prof)
@@ -314,8 +314,8 @@ class MedACRResolution(PhantomModule):
                                                 box_width,
                                                 box_height))
 
-        horizontal_line_length = math.ceil(2 * NUM_PINS * POINT_SEP / self.pixel_size_horizontal.value)
-        vertical_line_length = math.ceil(2 * NUM_PINS * POINT_SEP / self.pixel_size_vertical.value)
+        horizontal_line_length = math.floor(2 * NUM_PINS * POINT_SEP / self.pixel_size_horizontal.value)
+        vertical_line_length = math.floor(2 * NUM_PINS * POINT_SEP / self.pixel_size_vertical.value)
         self.horizontal_line.register_roi(LineROI(image,
                                                   box_xmin,
                                                   box_ymin,
@@ -355,8 +355,8 @@ class MedACRResolution(PhantomModule):
 
             horizontal_max_position: tuple[int, int] = 0, 0
             vertical_max_position: tuple[int, int] = 0, 0
-            horizontal_line_length = math.ceil(2 * NUM_PINS * POINT_SEP / self.pixel_size_horizontal.value)
-            vertical_line_length = math.ceil(2 * NUM_PINS * POINT_SEP / self.pixel_size_vertical.value)
+            horizontal_line_length = math.floor(2 * NUM_PINS * POINT_SEP / self.pixel_size_horizontal.value)
+            vertical_line_length = math.floor(2 * NUM_PINS * POINT_SEP / self.pixel_size_vertical.value)
             xmax = roi.width - horizontal_line_length
             ymax = roi.height - vertical_line_length
             line_min_vals = np.max(roi.pixel_array) * self.resolution_percentage.value / 100
