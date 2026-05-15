@@ -152,7 +152,7 @@ def maximum_contrast_ratio(pixel_width: float,
                                     num_peaks,
                                     num_samples),
                               bounds=(0, pixel_width))
-    return -optimum.fun
+    return -optimum.fun  # pyright: ignore[reportAttributeAccessIssue]
 
 
 class MedACRContrastResolution(PhantomModule):
@@ -267,8 +267,14 @@ class MedACRContrastResolution(PhantomModule):
                                                 box_width,
                                                 box_height))
 
-        horizontal_line_length = math.floor(2 * NUM_PINS * POINT_SEP / self.pixel_size_horizontal.value)
-        vertical_line_length = math.floor(2 * NUM_PINS * POINT_SEP / self.pixel_size_vertical.value)
+        horizontal_line_length = math.floor(2
+                                            * NUM_PINS
+                                            * POINT_SEP
+                                            / self.pixel_size_horizontal.value)
+        vertical_line_length = math.floor(2
+                                          * NUM_PINS
+                                          * POINT_SEP
+                                          / self.pixel_size_vertical.value)
         self.horizontal_line.register_roi(LineROI(image,
                                                   box_xmin,
                                                   box_ymin,
@@ -307,16 +313,23 @@ class MedACRContrastResolution(PhantomModule):
 
             horizontal_max_position: tuple[int, int] = 0, 0
             vertical_max_position: tuple[int, int] = 0, 0
-            horizontal_line_length = math.floor(2 * NUM_PINS * POINT_SEP / self.pixel_size_horizontal.value)
-            vertical_line_length = math.floor(2 * NUM_PINS * POINT_SEP / self.pixel_size_vertical.value)
+            horizontal_line_length = math.floor(2
+                                                * NUM_PINS
+                                                * POINT_SEP
+                                                / self.pixel_size_horizontal.value)
+            vertical_line_length = math.floor(2
+                                              * NUM_PINS
+                                              * POINT_SEP
+                                              / self.pixel_size_vertical.value)
             xmax = roi.width - horizontal_line_length
             ymax = roi.height - vertical_line_length
             line_min_vals = np.max(roi.pixel_array) * self.resolution_percentage.value / 100
 
-            self.best_contrast.value = 100 * maximum_contrast_ratio(self.pixel_size_horizontal.value,
-                                                                    POINT_SEP,
-                                                                    NUM_PINS,
-                                                                    horizontal_line_length)
+            self.best_contrast.value = (100
+                                        * maximum_contrast_ratio(self.pixel_size_horizontal.value,
+                                                                 POINT_SEP,
+                                                                 NUM_PINS,
+                                                                 horizontal_line_length))
 
             for x in range(roi.width):
                 for y in range(roi.height):

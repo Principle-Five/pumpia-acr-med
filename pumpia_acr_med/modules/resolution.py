@@ -8,7 +8,11 @@ from scipy.optimize import minimize_scalar
 from pumpia.module_handling.modules import PhantomModule
 from pumpia.module_handling.in_outs.roi_ios import BaseInputROI, InputRectangleROI, InputLineROI
 from pumpia.module_handling.in_outs.viewer_ios import MonochromeDicomViewerIO
-from pumpia.module_handling.in_outs.simple import FloatOutput, StringOutput, PercInput, BoolInput, OptionInput
+from pumpia.module_handling.in_outs.simple import (FloatOutput,
+                                                   StringOutput,
+                                                   PercInput,
+                                                   BoolInput,
+                                                   OptionInput)
 from pumpia.image_handling.roi_structures import RectangleROI, LineROI
 from pumpia.file_handling.dicom_structures import Series, Instance
 from pumpia.file_handling.dicom_tags import MRTags
@@ -165,7 +169,7 @@ def maximum_contrast_ratio(pixel_width: float,
                                     num_peaks,
                                     num_samples),
                               bounds=(0, pixel_width))
-    return -optimum.fun
+    return -optimum.fun  # pyright: ignore[reportAttributeAccessIssue]
 
 
 def model_neg_signal_fft_contrast(offset: float,
@@ -196,7 +200,7 @@ def maximum_frequency_ratio(pixel_width: float,
                                     num_samples,
                                     contrast_frequency),
                               bounds=(0, pixel_width))
-    return -optimum.fun
+    return -optimum.fun  # pyright: ignore[reportAttributeAccessIssue]
 
 
 class MedACRResolution(PhantomModule):
@@ -314,8 +318,14 @@ class MedACRResolution(PhantomModule):
                                                 box_width,
                                                 box_height))
 
-        horizontal_line_length = math.floor(2 * NUM_PINS * POINT_SEP / self.pixel_size_horizontal.value)
-        vertical_line_length = math.floor(2 * NUM_PINS * POINT_SEP / self.pixel_size_vertical.value)
+        horizontal_line_length = math.floor(2
+                                            * NUM_PINS
+                                            * POINT_SEP
+                                            / self.pixel_size_horizontal.value)
+        vertical_line_length = math.floor(2
+                                          * NUM_PINS
+                                          * POINT_SEP
+                                          / self.pixel_size_vertical.value)
         self.horizontal_line.register_roi(LineROI(image,
                                                   box_xmin,
                                                   box_ymin,
@@ -355,8 +365,14 @@ class MedACRResolution(PhantomModule):
 
             horizontal_max_position: tuple[int, int] = 0, 0
             vertical_max_position: tuple[int, int] = 0, 0
-            horizontal_line_length = math.floor(2 * NUM_PINS * POINT_SEP / self.pixel_size_horizontal.value)
-            vertical_line_length = math.floor(2 * NUM_PINS * POINT_SEP / self.pixel_size_vertical.value)
+            horizontal_line_length = math.floor(2
+                                                * NUM_PINS
+                                                * POINT_SEP
+                                                / self.pixel_size_horizontal.value)
+            vertical_line_length = math.floor(2
+                                              * NUM_PINS
+                                              * POINT_SEP
+                                              / self.pixel_size_vertical.value)
             xmax = roi.width - horizontal_line_length
             ymax = roi.height - vertical_line_length
             line_min_vals = np.max(roi.pixel_array) * self.resolution_percentage.value / 100
