@@ -6,19 +6,19 @@ import numpy as np
 from scipy.optimize import minimize_scalar
 
 from pumpia.module_handling.modules import PhantomModule
-from pumpia.module_handling.in_outs.roi_ios import BaseInputROI, InputRectangleROI, InputLineROI
-from pumpia.module_handling.in_outs.viewer_ios import MonochromeDicomViewerIO
-from pumpia.module_handling.in_outs.simple import (FloatOutput,
-                                                   StringOutput,
-                                                   PercInput,
-                                                   BoolInput,
-                                                   OptionInput)
+from pumpia.module_handling.fields.roi_fields import LineROIField, RectangleROIField
+from pumpia.module_handling.fields.viewer_fields import MonochromeDicomViewerField
+from pumpia.module_handling.fields.simple import (PercField,
+                                                  FloatField,
+                                                  BoolField,
+                                                  StringField,
+                                                  OptionField)
 from pumpia.image_handling.roi_structures import RectangleROI, LineROI
 from pumpia.file_handling.dicom_structures import Series, Instance
 from pumpia.file_handling.dicom_tags import MRTags
 from pumpia.utilities.array_utils import nth_max_bounds
 
-from pumpia_acr_med.med_acr_context import MedACRContextManagerGenerator, MedACRContext
+from pumpia_acr_med.med_acr_context import MedACRContextManager, MedACRContext
 
 BOX_Y_OFFSET = 28
 BOX_X_OFFSET = -5
@@ -207,35 +207,40 @@ class MedACRResolution(PhantomModule):
     """
     Calculates the contrast of the 1mm resolution insert.
     """
-    context_manager_generator = MedACRContextManagerGenerator()
+    context_manager = MedACRContextManager()
     show_draw_rois_button = True
     show_analyse_button = True
-    name = "Resolution"
+    title = "Resolution"
 
-    viewer = MonochromeDicomViewerIO(row=0, column=0)
+    viewer = MonochromeDicomViewerField(row=0, column=0)
 
-    auto_position_lines = BoolInput(True)
-    resolution_percentage = PercInput(50)
-    resolution_type = OptionInput[str](options_map={"FFT Method": "FFT",
+    auto_position_lines = BoolField()
+    resolution_percentage = PercField(50)
+    resolution_type = OptionField[str](options_map={"FFT Method": "FFT",
                                                     "Contrast Method": "contrast"},
                                        initial="FFT Method")
 
-    pixel_size_vertical = FloatOutput()
-    pixel_size_horizontal = FloatOutput()
-    phase_dir = StringOutput(verbose_name="Phase Encode Direction")
+    pixel_size_vertical = FloatField(read_only=True)
+    pixel_size_horizontal = FloatField(read_only=True)
+    phase_dir = StringField(verbose_name="Phase Encode Direction",
+                            read_only=True)
 
-    phase_contrast = FloatOutput(verbose_name="Phase Encode Contrast (%)",
-                                 reset_on_analysis=True)
-    freq_contrast = FloatOutput(verbose_name="Frequency Encode Contrast (%)",
-                                reset_on_analysis=True)
-    total_contrast = FloatOutput(verbose_name="Average Contrast (%)",
-                                 reset_on_analysis=True)
-    best_contrast = FloatOutput(verbose_name="Theoretical Best Contrast (%)",
-                                reset_on_analysis=True)
+    phase_contrast = FloatField(verbose_name="Phase Encode Contrast (%)",
+                                reset_on_analysis=True,
+                                read_only=True)
+    freq_contrast = FloatField(verbose_name="Frequency Encode Contrast (%)",
+                               reset_on_analysis=True,
+                               read_only=True)
+    total_contrast = FloatField(verbose_name="Average Contrast (%)",
+                                reset_on_analysis=True,
+                                read_only=True)
+    best_contrast = FloatField(verbose_name="Theoretical Best Contrast (%)",
+                               reset_on_analysis=True,
+                               read_only=True)
 
-    main_roi = InputRectangleROI()
-    horizontal_line = InputLineROI()
-    vertical_line = InputLineROI()
+    main_roi = RectangleROIField()
+    horizontal_line = LineROIField()
+    vertical_line = LineROIField()
 
     def draw_rois(self, context: MedACRContext, batch: bool = False) -> None:
         if isinstance(self.viewer.image, Instance):
@@ -252,18 +257,20 @@ class MedACRResolution(PhantomModule):
 
         self.viewer.load_image(image)
 
-        pixel_size = image.pixel_size
-        pixel_height = pixel_size[1]
-        pixel_width = pixel_size[2]
+        pixel_size = image.pixel_spacing
+        if pixel_size is None:
+            return
+        pixel_height = pixel_size[0]
+        pixel_width = pixel_size[1]
 
-        self.pixel_size_horizontal.value = pixel_width
-        self.pixel_size_vertical.value = pixel_height
+        self.pixel_size_horizontal = pixel_width
+        self.pixel_size_vertical = pixel_height
 
-        phase_dir = image.get_tag(MRTags.InPlanePhaseEncodingDirection)
+        phase_dir = image.get_value(MRTags.InPlanePhaseEncodingDirection, True)
         if phase_dir is not None:
-            self.phase_dir.value = phase_dir
+            self.phase_dir = phase_dir
         else:
-            self.phase_dir.value = ""
+            self.phase_dir = ""
 
         box_height = BOX_SIDE_LENGTH / pixel_height
         box_width = BOX_SIDE_LENGTH / pixel_width
@@ -321,11 +328,11 @@ class MedACRResolution(PhantomModule):
         horizontal_line_length = math.floor(2
                                             * NUM_PINS
                                             * POINT_SEP
-                                            / self.pixel_size_horizontal.value)
+                                            / self.pixel_size_horizontal)
         vertical_line_length = math.floor(2
                                           * NUM_PINS
                                           * POINT_SEP
-                                          / self.pixel_size_vertical.value)
+                                          / self.pixel_size_vertical)
         self.horizontal_line.register_roi(LineROI(image,
                                                   box_xmin,
                                                   box_ymin,
@@ -337,22 +344,17 @@ class MedACRResolution(PhantomModule):
                                                 box_xmin,
                                                 box_ymin + vertical_line_length))
 
-    def post_roi_register(self, roi_input: BaseInputROI):
+    def post_roi_register(self, roi_input: LineROIField | RectangleROIField):
         if (roi_input.roi is not None
             and self.manager is not None
                 and roi_input in self.rois):
             self.manager.add_roi(roi_input.roi)
 
-    def link_rois_viewers(self):
-        self.main_roi.viewer = self.viewer
-        self.horizontal_line.viewer = self.viewer
-        self.vertical_line.viewer = self.viewer
-
     def analyse(self, batch: bool = False):
         horizontal_max_contrast: float = 0
         vertical_max_contrast: float = 0
         contrast_frequency = 1 / (2 * POINT_SEP)
-        if self.auto_position_lines.value:
+        if self.auto_position_lines:
             if self.viewer.image is not None:
                 image = self.viewer.image
             else:
@@ -368,35 +370,35 @@ class MedACRResolution(PhantomModule):
             horizontal_line_length = math.floor(2
                                                 * NUM_PINS
                                                 * POINT_SEP
-                                                / self.pixel_size_horizontal.value)
+                                                / self.pixel_size_horizontal)
             vertical_line_length = math.floor(2
                                               * NUM_PINS
                                               * POINT_SEP
-                                              / self.pixel_size_vertical.value)
+                                              / self.pixel_size_vertical)
             xmax = roi.width - horizontal_line_length
             ymax = roi.height - vertical_line_length
-            line_min_vals = np.max(roi.pixel_array) * self.resolution_percentage.value / 100
+            line_min_vals = np.max(roi.pixel_array) * self.resolution_percentage / 100
 
-            if self.resolution_type.value == "FFT":
-                self.best_contrast.value = 100 * maximum_frequency_ratio(self.pixel_size_horizontal.value,
-                                                                         POINT_SEP,
-                                                                         NUM_PINS,
-                                                                         horizontal_line_length,
-                                                                         contrast_frequency)
+            if self.resolution_type == "FFT":
+                self.best_contrast = 100 * maximum_frequency_ratio(self.pixel_size_horizontal,
+                                                                   POINT_SEP,
+                                                                   NUM_PINS,
+                                                                   horizontal_line_length,
+                                                                   contrast_frequency)
             else:
-                self.best_contrast.value = 100 * maximum_contrast_ratio(self.pixel_size_horizontal.value,
-                                                                        POINT_SEP,
-                                                                        NUM_PINS,
-                                                                        horizontal_line_length)
+                self.best_contrast = 100 * maximum_contrast_ratio(self.pixel_size_horizontal,
+                                                                  POINT_SEP,
+                                                                  NUM_PINS,
+                                                                  horizontal_line_length)
 
             for x in range(roi.width):
                 for y in range(roi.height):
                     if x <= xmax:
                         profile = roi.pixel_array[y, x:x + horizontal_line_length]
                         if np.count_nonzero(profile >= line_min_vals) >= NUM_PINS:
-                            if self.resolution_type.value == "FFT":
+                            if self.resolution_type == "FFT":
                                 contrast = fft_contrast(profile,
-                                                        self.pixel_size_horizontal.value,
+                                                        self.pixel_size_horizontal,
                                                         contrast_frequency)
                             else:
                                 contrast = get_contrast(profile)
@@ -406,9 +408,9 @@ class MedACRResolution(PhantomModule):
                     if y <= ymax:
                         profile = roi.pixel_array[y:y + vertical_line_length, x]
                         if np.count_nonzero(profile >= line_min_vals) >= NUM_PINS:
-                            if self.resolution_type.value == "FFT":
+                            if self.resolution_type == "FFT":
                                 contrast = fft_contrast(profile,
-                                                        self.pixel_size_vertical.value,
+                                                        self.pixel_size_vertical,
                                                         contrast_frequency)
                             else:
                                 contrast = get_contrast(profile)
@@ -432,12 +434,12 @@ class MedACRResolution(PhantomModule):
             if (self.horizontal_line.roi is None
                     or self.vertical_line.roi is None):
                 return
-            elif self.resolution_type.value == "FFT":
+            elif self.resolution_type == "FFT":
                 horizontal_max_contrast = fft_contrast(self.horizontal_line.roi.profile,  # pyright: ignore[reportArgumentType]
-                                                       self.pixel_size_horizontal.value,
+                                                       self.pixel_size_horizontal,
                                                        contrast_frequency)
                 vertical_max_contrast = fft_contrast(self.vertical_line.roi.profile,  # pyright: ignore[reportArgumentType]
-                                                     self.pixel_size_vertical.value,
+                                                     self.pixel_size_vertical,
                                                      contrast_frequency)
             else:
                 horizontal_max_contrast = get_contrast(self.horizontal_line.roi.profile)  # pyright: ignore[reportArgumentType]
@@ -446,10 +448,10 @@ class MedACRResolution(PhantomModule):
         h_contrast = 100 * horizontal_max_contrast
         v_contrast = 100 * vertical_max_contrast
 
-        if self.phase_dir.value == "ROW":
-            self.phase_contrast.value = h_contrast
-            self.freq_contrast.value = v_contrast
+        if self.phase_dir == "ROW":
+            self.phase_contrast = h_contrast
+            self.freq_contrast = v_contrast
         else:
-            self.phase_contrast.value = v_contrast
-            self.freq_contrast.value = h_contrast
-        self.total_contrast.value = (h_contrast + v_contrast) / 2
+            self.phase_contrast = v_contrast
+            self.freq_contrast = h_contrast
+        self.total_contrast = (h_contrast + v_contrast) / 2

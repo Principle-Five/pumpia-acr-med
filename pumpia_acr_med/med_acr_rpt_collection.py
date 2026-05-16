@@ -2,21 +2,19 @@
 Collection for Medium ACR with repeat images.
 """
 
-from pumpia.module_handling.module_collections import (OutputFrame,
-                                                       WindowGroup,
-                                                       BaseCollection)
-from pumpia.module_handling.in_outs.groups import IOGroup
-from pumpia.module_handling.in_outs.viewer_ios import MonochromeDicomViewerIO
-from pumpia.widgets.viewers import BaseViewer
+from pumpia.module_handling.collections import ModuleGroup, BaseCollection
+from pumpia.module_handling.fields.windows import FieldWindow
+from pumpia.module_handling.fields.groups import FieldGroup
+from pumpia.module_handling.fields.viewer_fields import MonochromeDicomViewerField
+from pumpia.widgets.viewers import MonochromeDicomViewer
 
-from pumpia_acr_med.med_acr_context import MedACRContextManagerGenerator
+from pumpia_acr_med.med_acr_context import MedACRContextManager
 from pumpia_acr_med.modules.sub_snr import MedACRSubSNR
 from pumpia_acr_med.modules.uniformity import MedACRUniformity
 from pumpia_acr_med.modules.ghosting import MedACRGhosting
 from pumpia_acr_med.modules.slice_width import MedACRSliceWidth
 from pumpia_acr_med.modules.slice_pos import MedACRSlicePosition
 from pumpia_acr_med.modules.phantom_width import MedACRPhantomWidth
-# from pumpia_acr_med.modules.resolution_contrast import MedACRContrastResolution
 from pumpia_acr_med.modules.resolution import MedACRResolution
 
 
@@ -24,11 +22,11 @@ class MedACRrptCollection(BaseCollection):
     """
     Collection for medium ACR phantom with repeated scans.
     """
-    context_manager_generator = MedACRContextManagerGenerator()
-    name = "Medium ACR Repeat Collection"
+    context_manager = MedACRContextManager()
+    title = "Medium ACR Repeat Collection"
 
-    viewer1 = MonochromeDicomViewerIO(row=0, column=0)
-    viewer2 = MonochromeDicomViewerIO(row=0, column=1)
+    viewer1 = MonochromeDicomViewerField(row=0, column=0)
+    viewer2 = MonochromeDicomViewerField(row=0, column=1)
 
     snr = MedACRSubSNR(verbose_name="SNR")
 
@@ -50,63 +48,73 @@ class MedACRrptCollection(BaseCollection):
     resolution1 = MedACRResolution(verbose_name="Resolution")
     resolution2 = MedACRResolution(verbose_name="Resolution")
 
-    snr_output = OutputFrame(verbose_name="SNR Output")
-    image1_output = OutputFrame(verbose_name="Image 1 Results")
-    image2_output = OutputFrame(verbose_name="Image 2 Results")
+    snr_output = FieldWindow(snr.fields.signal,
+                             snr.fields.noise,
+                             snr.fields.snr,
+                             snr.fields.cor_snr,
+                             verbose_name="SNR Output")
+    image1_output = FieldWindow(uniformity1.fields.uniformity,
+                                ghosting1.fields.ghosting,
+                                slice_width1.fields.slice_width,
+                                slice_pos1.fields.slice_1_pos,
+                                slice_pos1.fields.slice_11_pos,
+                                phantom_width1.fields.linearity,
+                                phantom_width1.fields.distortion,
+                                resolution1.fields.total_contrast,
+                                verbose_name="Image 1 Results")
+    image2_output = FieldWindow(uniformity2.fields.uniformity,
+                                ghosting2.fields.ghosting,
+                                slice_width2.fields.slice_width,
+                                slice_pos2.fields.slice_1_pos,
+                                slice_pos2.fields.slice_11_pos,
+                                phantom_width2.fields.linearity,
+                                phantom_width2.fields.distortion,
+                                resolution2.fields.total_contrast,
+                                verbose_name="Image 2 Results")
 
-    uniformity_window = WindowGroup([uniformity1, uniformity2],
+    uniformity_size_group = FieldGroup(uniformity1.fields.size,
+                                       uniformity2.fields.size)
+    uniformity_kernel_group = FieldGroup(uniformity1.fields.kernel_bool,
+                                         uniformity2.fields.kernel_bool)
+    ghosting_size_group = FieldGroup(ghosting1.fields.size,
+                                     ghosting2.fields.size)
+    slice_width_tan_theta_group = FieldGroup(slice_width1.fields.tan_theta,
+                                             slice_width2.fields.tan_theta)
+    slice_width_max_perc_group = FieldGroup(slice_width1.fields.max_perc,
+                                            slice_width2.fields.max_perc)
+    slice_width_type_group = FieldGroup(slice_width1.fields.fit_type,
+                                        slice_width2.fields.fit_type)
+    phantom_width_max_perc_group = FieldGroup(phantom_width1.fields.max_perc,
+                                              phantom_width2.fields.max_perc)
+    phantom_width_inc_vert_group = FieldGroup(phantom_width1.fields.bool_vertical,
+                                              phantom_width2.fields.bool_vertical)
+    phantom_width_inc_hor_group = FieldGroup(phantom_width1.fields.bool_horizontal,
+                                             phantom_width2.fields.bool_horizontal)
+    phantom_width_inc_up_group = FieldGroup(phantom_width1.fields.bool_up_slope,
+                                            phantom_width2.fields.bool_up_slope)
+    phantom_width_inc_down_group = FieldGroup(phantom_width1.fields.bool_down_slope,
+                                              phantom_width2.fields.bool_down_slope)
+    res_perc_group = FieldGroup(resolution1.fields.resolution_percentage,
+                                resolution2.fields.resolution_percentage)
+    res_auto_pos_group = FieldGroup(resolution1.fields.auto_position_lines,
+                                    resolution2.fields.auto_position_lines)
+    res_type_group = FieldGroup(resolution1.fields.resolution_type,
+                                resolution2.fields.resolution_type)
+
+    uniformity_window = ModuleGroup(uniformity1, uniformity2,
                                     verbose_name="Uniformity")
-    ghosting_window = WindowGroup([ghosting1, ghosting2],
+    ghosting_window = ModuleGroup(ghosting1, ghosting2,
                                   verbose_name="Ghosting")
-    slice_width_window = WindowGroup([slice_width1, slice_width2],
+    slice_width_window = ModuleGroup(slice_width1, slice_width2,
                                      verbose_name="Slice Width")
-    slice_pos_window = WindowGroup([slice_pos1, slice_pos2],
+    slice_pos_window = ModuleGroup(slice_pos1, slice_pos2,
                                    verbose_name="Slice Position")
-    phantom_width_window = WindowGroup([phantom_width1, phantom_width2],
+    phantom_width_window = ModuleGroup(phantom_width1, phantom_width2,
                                        verbose_name="Phantom Width")
-    resolution_window = WindowGroup([resolution1, resolution2],
+    resolution_window = ModuleGroup(resolution1, resolution2,
                                     verbose_name="Resolution")
 
-    def load_outputs(self):
-        self.snr_output.register_output(self.snr.signal)
-        self.snr_output.register_output(self.snr.noise)
-        self.snr_output.register_output(self.snr.snr)
-        self.snr_output.register_output(self.snr.cor_snr)
-
-        self.image1_output.register_output(self.uniformity1.uniformity)
-        self.image1_output.register_output(self.ghosting1.ghosting)
-        self.image1_output.register_output(self.slice_width1.slice_width)
-        self.image1_output.register_output(self.slice_pos1.slice_1_pos)
-        self.image1_output.register_output(self.slice_pos1.slice_11_pos)
-        self.image1_output.register_output(self.phantom_width1.linearity)
-        self.image1_output.register_output(self.phantom_width1.distortion)
-        self.image1_output.register_output(self.resolution1.total_contrast)
-
-        self.image2_output.register_output(self.uniformity2.uniformity)
-        self.image2_output.register_output(self.ghosting2.ghosting)
-        self.image2_output.register_output(self.slice_width2.slice_width)
-        self.image2_output.register_output(self.slice_pos2.slice_1_pos)
-        self.image2_output.register_output(self.slice_pos2.slice_11_pos)
-        self.image2_output.register_output(self.phantom_width2.linearity)
-        self.image2_output.register_output(self.phantom_width2.distortion)
-        self.image2_output.register_output(self.resolution2.total_contrast)
-
-        IOGroup([self.uniformity1.size, self.uniformity2.size])
-        IOGroup([self.uniformity1.kernel_bool, self.uniformity2.kernel_bool])
-        IOGroup([self.ghosting1.size, self.ghosting2.size])
-        IOGroup([self.slice_width1.tan_theta, self.slice_width2.tan_theta])
-        IOGroup([self.slice_width1.max_perc, self.slice_width2.max_perc])
-        IOGroup([self.slice_width1.fit_type, self.slice_width2.fit_type])
-        IOGroup([self.phantom_width1.max_perc, self.phantom_width2.max_perc])
-        IOGroup([self.phantom_width1.bool_vertical, self.phantom_width2.bool_vertical])
-        IOGroup([self.phantom_width1.bool_horizontal, self.phantom_width2.bool_horizontal])
-        IOGroup([self.phantom_width1.bool_up_slope, self.phantom_width2.bool_up_slope])
-        IOGroup([self.phantom_width1.bool_down_slope, self.phantom_width2.bool_down_slope])
-        IOGroup([self.resolution1.resolution_percentage, self.resolution2.resolution_percentage])
-        IOGroup([self.resolution1.auto_position_lines, self.resolution2.auto_position_lines])
-        IOGroup([self.resolution1.resolution_type, self.resolution2.resolution_type])
-
-    def on_image_load(self, viewer: BaseViewer) -> None:
+    def on_image_load(self, viewer: MonochromeDicomViewer) -> None:
         if viewer is self.viewer1:
             if self.viewer1.image is not None:
                 image = self.viewer1.image
@@ -127,7 +135,3 @@ class MedACRrptCollection(BaseCollection):
                 self.slice_pos2.viewer1.load_image(image)
                 self.phantom_width2.viewer.load_image(image)
                 self.resolution2.viewer.load_image(image)
-
-    def run_analysis(self) -> None:
-        super().run_analysis()
-        self.update_viewers()

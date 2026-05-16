@@ -8,19 +8,18 @@ from scipy.optimize import curve_fit
 import matplotlib.pyplot as plt
 
 from pumpia.module_handling.modules import PhantomModule
-from pumpia.module_handling.in_outs.roi_ios import BaseInputROI, InputRectangleROI
-from pumpia.module_handling.in_outs.viewer_ios import MonochromeDicomViewerIO
-from pumpia.module_handling.in_outs.simple import (FloatInput,
-                                                   PercInput,
-                                                   FloatOutput,
-                                                   StringOutput,
-                                                   OptionInput)
+from pumpia.module_handling.fields.roi_fields import RectangleROIField
+from pumpia.module_handling.fields.viewer_fields import MonochromeDicomViewerField
+from pumpia.module_handling.fields.simple import (PercField,
+                                                  FloatField,
+                                                  StringField,
+                                                  OptionField)
 from pumpia.image_handling.roi_structures import RectangleROI
 from pumpia.file_handling.dicom_structures import Series, Instance
 from pumpia.utilities.array_utils import nth_max_widest_peak
 from pumpia.utilities.feature_utils import flat_top_gauss, split_gauss
 
-from pumpia_acr_med.med_acr_context import MedACRContextManagerGenerator, MedACRContext
+from pumpia_acr_med.med_acr_context import MedACRContextManager, MedACRContext
 
 # ROI sizes in mm
 ROI_HEIGHT = 2
@@ -39,26 +38,34 @@ class MedACRSliceWidth(PhantomModule):
     Overall slice width is calculated by taking the geometric mean
     of the top and bottom ramp widths.
     """
-    context_manager_generator = MedACRContextManagerGenerator()
+    context_manager = MedACRContextManager()
     show_draw_rois_button = True
     show_analyse_button = True
-    name = "Slice Width"
+    title = "Slice Width"
 
-    viewer = MonochromeDicomViewerIO(row=0, column=0)
+    viewer = MonochromeDicomViewerField(row=0, column=0)
 
-    tan_theta = FloatInput(0.1, verbose_name="Tan of ramp angle")
-    max_perc = PercInput(50, verbose_name="Width position (% of max)")
-    fit_type = OptionInput(fit_options, "Flat Top Gaussian")
+    tan_theta = FloatField(0.1, verbose_name="Tan of ramp angle")
+    max_perc = PercField(50, verbose_name="Width position (% of max)")
+    fit_type = OptionField(fit_options, "Flat Top Gaussian")
 
-    ramp_dir = StringOutput(verbose_name="Ramp Direction")
+    ramp_dir = StringField(verbose_name="Ramp Direction", read_only=True)
 
-    expected_width = FloatOutput(verbose_name="Expected Width (mm)", reset_on_analysis=True)
-    top_ramp_width = FloatOutput(verbose_name="Top Ramp Width (mm)", reset_on_analysis=True)
-    bottom_ramp_width = FloatOutput(verbose_name="Bottom Ramp Width (mm)", reset_on_analysis=True)
-    slice_width = FloatOutput(verbose_name="Slice Width (mm)", reset_on_analysis=True)
+    expected_width = FloatField(verbose_name="Expected Width (mm)",
+                                reset_on_analysis=True,
+                                read_only=True)
+    top_ramp_width = FloatField(verbose_name="Top Ramp Width (mm)",
+                                reset_on_analysis=True,
+                                read_only=True)
+    bottom_ramp_width = FloatField(verbose_name="Bottom Ramp Width (mm)",
+                                   reset_on_analysis=True,
+                                   read_only=True)
+    slice_width = FloatField(verbose_name="Slice Width (mm)",
+                             reset_on_analysis=True,
+                             read_only=True)
 
-    top_ramp = InputRectangleROI()
-    bottom_ramp = InputRectangleROI()
+    top_ramp = RectangleROIField()
+    bottom_ramp = RectangleROIField()
 
     def draw_rois(self, context: MedACRContext, batch: bool = False) -> None:
 
@@ -72,14 +79,16 @@ class MedACRSliceWidth(PhantomModule):
         else:
             return
 
-        pixel_size = image.pixel_size
-        pixel_height = pixel_size[1]
-        pixel_width = pixel_size[2]
+        pixel_size = image.pixel_spacing
+        if pixel_size is None:
+            return
+        pixel_height = pixel_size[0]
+        pixel_width = pixel_size[1]
 
-        self.expected_width.value = pixel_size[0]
+        self.expected_width = pixel_size[0]
 
         if context.res_insert_side == "bottom" or context.res_insert_side == "top":
-            self.ramp_dir.value = "Horizontal"
+            self.ramp_dir = "Horizontal"
             box_height = ROI_HEIGHT / pixel_height
             box_width = ROI_WIDTH / pixel_width
             top_pix_offset = TOP_OFFSET / pixel_height
@@ -99,7 +108,7 @@ class MedACRSliceWidth(PhantomModule):
                 bottom_ymin = round(context.ycent - bottom_pix_offset - box_height)
                 bottom_ymax = round(context.ycent - bottom_pix_offset)
         else:
-            self.ramp_dir.value = "Vertical"
+            self.ramp_dir = "Vertical"
             box_height = ROI_HEIGHT / pixel_width
             box_width = ROI_WIDTH / pixel_height
             top_pix_offset = TOP_OFFSET / pixel_width
@@ -137,34 +146,36 @@ class MedACRSliceWidth(PhantomModule):
                                   replace=True)
         self.bottom_ramp.register_roi(bottom_roi)
 
-    def post_roi_register(self, roi_input: BaseInputROI):
+    def post_roi_register(self, roi_input: RectangleROIField):
         if (roi_input.roi is not None
             and self.manager is not None
                 and (roi_input is self.top_ramp or roi_input is self.bottom_ramp)):
             self.manager.add_roi(roi_input.roi)
 
-    def link_rois_viewers(self):
-        self.top_ramp.viewer = self.viewer
-        self.bottom_ramp.viewer = self.viewer
-
     def analyse(self, batch: bool = False):
         if (self.top_ramp.roi is not None
             and self.bottom_ramp.roi is not None
                 and self.viewer.image is not None):
-            if self.ramp_dir.value[0].lower() == "v":
+            pixel_spacing = self.viewer.image.pixel_spacing
+            if pixel_spacing is None:
+                return
+            if self.ramp_dir[0].lower() == "v":
                 top_prof = self.top_ramp.roi.v_profile
                 bottom_prof = self.bottom_ramp.roi.v_profile
-                pix_size = self.viewer.image.pixel_size[1]
+                pix_size = pixel_spacing[0]
             else:
                 top_prof = self.top_ramp.roi.h_profile
                 bottom_prof = self.bottom_ramp.roi.h_profile
-                pix_size = self.viewer.image.pixel_size[2]
+                pix_size = pixel_spacing[1]
 
-            self.expected_width.value = self.viewer.image.pixel_size[0]
+            slice_thickness = self.viewer.image.slice_thickness
+            if slice_thickness is None:
+                return
+            self.expected_width = slice_thickness
 
-            if self.fit_type.value is split_gauss:
+            if self.fit_type is split_gauss:
                 # reciprocal would require a negative in c_coeff
-                divisor = 100 / self.max_perc.value
+                divisor = 100 / self.max_perc
                 c_coeff = math.sqrt(2 * math.log(divisor))
 
                 top_fwhm_peak = nth_max_widest_peak(top_prof, divisor)
@@ -198,19 +209,19 @@ class MedACRSliceWidth(PhantomModule):
                                           bounds=bounds)
                 bottom_fwhm = abs(bottom_fit[1] - bottom_fit[0]) + (2 * c_coeff * bottom_fit[2])
 
-                tan_theta = self.tan_theta.value
+                tan_theta = self.tan_theta
 
                 top_width = top_fwhm * tan_theta * pix_size
                 bottom_width = bottom_fwhm * tan_theta * pix_size
 
-                self.top_ramp_width.value = top_width
-                self.bottom_ramp_width.value = bottom_width
+                self.top_ramp_width = top_width
+                self.bottom_ramp_width = bottom_width
 
-                self.slice_width.value = math.sqrt(top_width * bottom_width)
+                self.slice_width = math.sqrt(top_width * bottom_width)
 
             else:
                 # reciprocal would require a negative in coeffs
-                divisor = 100 / self.max_perc.value
+                divisor = 100 / self.max_perc
 
                 top_fwhm_peak = nth_max_widest_peak(top_prof, divisor)
                 bottom_fwhm_peak = nth_max_widest_peak(bottom_prof, divisor)
@@ -245,15 +256,15 @@ class MedACRSliceWidth(PhantomModule):
                 bottom_coeff = math.sqrt(2 * math.pow((2 * math.log(divisor)), 1 / bottom_fit[3]))
                 bottom_fwhm = 2 * bottom_coeff * bottom_fit[1]
 
-                tan_theta = self.tan_theta.value
+                tan_theta = self.tan_theta
 
                 top_width = abs(top_fwhm * tan_theta * pix_size)
                 bottom_width = abs(bottom_fwhm * tan_theta * pix_size)
 
-                self.top_ramp_width.value = top_width
-                self.bottom_ramp_width.value = bottom_width
+                self.top_ramp_width = top_width
+                self.bottom_ramp_width = bottom_width
 
-                self.slice_width.value = math.sqrt(top_width * bottom_width)
+                self.slice_width = math.sqrt(top_width * bottom_width)
 
     def load_commands(self):
         self.register_command("Show Profiles", self.show_profiles)
@@ -265,18 +276,21 @@ class MedACRSliceWidth(PhantomModule):
         if (self.top_ramp.roi is not None
             and self.bottom_ramp.roi is not None
                 and self.viewer.image is not None):
-            if self.ramp_dir.value[0].lower() == "v":
+            pixel_spacing = self.viewer.image.pixel_spacing
+            if pixel_spacing is None:
+                return
+            if self.ramp_dir[0].lower() == "v":
                 top_prof = self.top_ramp.roi.v_profile
                 bottom_prof = self.bottom_ramp.roi.v_profile
-                pix_size = self.viewer.image.pixel_size[1]
+                pix_size = pixel_spacing[0]
             else:
                 top_prof = self.top_ramp.roi.h_profile
                 bottom_prof = self.bottom_ramp.roi.h_profile
-                pix_size = self.viewer.image.pixel_size[2]
+                pix_size = pixel_spacing[1]
 
-            tan_theta = self.tan_theta.value
+            tan_theta = self.tan_theta
 
-            divisor = 100 / self.max_perc.value
+            divisor = 100 / self.max_perc
 
             top_indeces = np.indices(top_prof.shape)[0]
             bottom_indeces = np.indices(bottom_prof.shape)[0]
@@ -285,7 +299,7 @@ class MedACRSliceWidth(PhantomModule):
 
             plt.clf()
 
-            if self.fit_type.value is split_gauss:
+            if self.fit_type is split_gauss:
                 plt.plot(top_x_locs, top_prof, label="Top Profile")
 
                 bounds = ([0, 0, 0, -np.inf, -np.inf],
