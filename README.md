@@ -122,20 +122,46 @@ Users can select any line profiles they don't want included in the calculations 
 ## Resolution
 
 The 1mm resolution insert is used.
-The contrast for line profiles horizontally and vertically across the holes are calculated using the following method:
+There are two methods available for calculating the resolution in the image, these are the FFT method and Contrast method, the FFT method is the default method.
+The results provided are the maximum calculated for each horizontal and vertical line ROI within the main ROI surrounding the insert that meets the following conditions:
+
+1. $length == floor\bigg(\frac{8}{pixel size}\bigg)$
+2. $count\bigg(pixels\gt max(box\ ROI)*\frac{resolution\ percentage}{100}\bigg)>4$
+
+An average of the horizontal and vertical contrasts is reported on the main tab, as well as a theoretical maximum for an 'ideal' offset.
+
+### FFT Method
+
+The FFT method uses the fourier transform of the line ROI padded with zeros to be 10 times the length.
+The reported value is the $0.5mm^{-1}$ frequency normalised to the $0mm^{-1}$ frequency.
+
+### Contrast Method
 
 1. For each line the contrast is calculated by working out the contrast betwen the gaps betwen the pins and the pins either side of the gap.
 2. This gives 3 contrast values for each line (one for each gap between the pins), the worst case is taken as the contrast for the line.
-3. The best line verically/horizontally is reported as the contrast result, this is in line with ACR guidance.
-
-An average of the horizontal and vertical contrasts is reported on the main tab.
 
 Contrast is calculated using:
 
-$$Contrast(\\%) = \frac{max-min}{max+min} * 100$$
+$$contrast(\\%) = \frac{max-min}{max+min} * 100$$
 
-Users can override the position of the central hole in the surrounding ROI, this is normally calculated by taking the position of the maximum of the surrounding ROI's x and y profiles.
-The central hole is the one which is part of both a horizontal and vertical line.
+### Theoretical Maximum
+
+The theoretical maximum resolution is provided by modelling the signal from a square wave at different x-offsets.
+The square wave is given by:
+
+```math
+\left\{
+\begin{array}{ c l }
+1 & 0 \lt (x-offset)\mod 2 \lt 1\\
+0 & 1 \lt (x-offset)\mod 2 \lt 2
+\end{array}
+\right.
+```
+
+This is integrated across pixels of an equivelant size to the image being analysed.
+
+**Important:** The modeling does not take into account non-uniformities/distortions in images,
+it is therefore possible to measure a higher resolution than the theoretical maximum.
 
 # Calculating The Context
 

@@ -8,15 +8,10 @@ from scipy.optimize import minimize_scalar
 from pumpia.module_handling.modules import PhantomModule
 from pumpia.module_handling.in_outs.roi_ios import BaseInputROI, InputRectangleROI, InputLineROI
 from pumpia.module_handling.in_outs.viewer_ios import MonochromeDicomViewerIO
-from pumpia.module_handling.in_outs.simple import (FloatOutput,
-                                                   StringOutput,
-                                                   PercInput,
-                                                   BoolInput,
-                                                   OptionInput)
+from pumpia.module_handling.in_outs.simple import FloatOutput, StringOutput, PercInput, BoolInput
 from pumpia.image_handling.roi_structures import RectangleROI, LineROI
 from pumpia.file_handling.dicom_structures import Series, Instance
 from pumpia.file_handling.dicom_tags import MRTags
-from pumpia.utilities.array_utils import nth_max_bounds
 
 from pumpia_acr_med.med_acr_context import MedACRContextManagerGenerator, MedACRContext
 
@@ -28,61 +23,6 @@ LINE_GAP = 2
 POINT_SEP = 1
 NUM_PINS = 4
 FFT_MULT = 10
-
-
-def get_contrast(profile: np.ndarray[tuple[int], np.dtype]) -> float:
-    """
-    Get the contrast for a line profile from the 1mm ACR resolution insert
-    """
-    bounds = nth_max_bounds(profile, 2)
-    if profile[math.floor(bounds.minimum)] > profile[math.floor(bounds.minimum)]:
-        start = math.floor(bounds.minimum)
-    else:
-        start = math.floor(bounds.minimum)
-
-    if profile[math.floor(bounds.maximum)] > profile[math.floor(bounds.maximum)]:
-        end = math.floor(bounds.maximum)
-    else:
-        end = math.floor(bounds.maximum)
-
-    new_prof = profile[start:end + 1]
-    minimum = np.min(new_prof)
-    maximum = np.max(new_prof)
-    half_maximum = (maximum + minimum) / 2
-    mins = list(np.argwhere(new_prof < half_maximum)[:, 0])
-
-    if end - start in mins:
-        mins.remove(end - start)
-    if 0 in mins:
-        mins.remove(0)
-
-    if len(mins) == 0:
-        return 0
-
-    troughs: list[list[int]] = [[mins[0]]]
-    prev_min = mins[0]
-
-    for m in mins[1:]:
-        if m == prev_min + 1:
-            troughs[-1].append(m)
-        else:
-            troughs.append([m])
-        prev_min = m
-
-    contrasts = []
-    prev_t = 0
-    for trough_num, trough in enumerate(troughs):
-        if trough_num + 1 < len(troughs):
-            next_t = min(troughs[trough_num + 1])
-        else:
-            next_t = len(new_prof)
-        left_peak_val = np.mean(new_prof[prev_t:min(trough)])
-        right_peak_val = np.mean(new_prof[max(trough) + 1:next_t])
-        peak_val = (left_peak_val + right_peak_val) / 2
-        trough_val = np.mean(new_prof[min(trough):max(trough) + 1])
-        contrasts.append((peak_val - trough_val) / (peak_val + trough_val))
-
-    return min(contrasts)
 
 
 def fft_contrast(profile: np.ndarray[tuple[int], np.dtype],
@@ -146,32 +86,6 @@ def model_signal(offset: float,
     return signal
 
 
-def model_neg_signal_contrast(offset: float,
-                              pixel_width: float,
-                              wave_peak_width: float,
-                              num_peaks: int,
-                              num_samples: int,) -> float:
-    signal = model_signal(offset,
-                          pixel_width,
-                          wave_peak_width,
-                          num_peaks,
-                          num_samples)
-    return -get_contrast(signal)
-
-
-def maximum_contrast_ratio(pixel_width: float,
-                           wave_peak_width: float,
-                           num_peaks: int,
-                           num_samples: int) -> float:
-    optimum = minimize_scalar(model_neg_signal_contrast,
-                              args=(pixel_width,
-                                    wave_peak_width,
-                                    num_peaks,
-                                    num_samples),
-                              bounds=(0, pixel_width))
-    return -optimum.fun  # pyright: ignore[reportAttributeAccessIssue]
-
-
 def model_neg_signal_fft_contrast(offset: float,
                                   pixel_width: float,
                                   wave_peak_width: float,
@@ -203,7 +117,7 @@ def maximum_frequency_ratio(pixel_width: float,
     return -optimum.fun  # pyright: ignore[reportAttributeAccessIssue]
 
 
-class MedACRResolution(PhantomModule):
+class MedACRFFTResolution(PhantomModule):
     """
     Calculates the contrast of the 1mm resolution insert.
     """
@@ -216,9 +130,6 @@ class MedACRResolution(PhantomModule):
 
     auto_position_lines = BoolInput(True)
     resolution_percentage = PercInput(50)
-    resolution_type = OptionInput[str](options_map={"FFT Method": "FFT",
-                                                    "Contrast Method": "contrast"},
-                                       initial="FFT Method")
 
     pixel_size_vertical = FloatOutput()
     pixel_size_horizontal = FloatOutput()
@@ -377,41 +288,30 @@ class MedACRResolution(PhantomModule):
             ymax = roi.height - vertical_line_length
             line_min_vals = np.max(roi.pixel_array) * self.resolution_percentage.value / 100
 
-            if self.resolution_type.value == "FFT":
-                self.best_contrast.value = 100 * maximum_frequency_ratio(self.pixel_size_horizontal.value,
-                                                                         POINT_SEP,
-                                                                         NUM_PINS,
-                                                                         horizontal_line_length,
-                                                                         contrast_frequency)
-            else:
-                self.best_contrast.value = 100 * maximum_contrast_ratio(self.pixel_size_horizontal.value,
-                                                                        POINT_SEP,
-                                                                        NUM_PINS,
-                                                                        horizontal_line_length)
+            self.best_contrast.value = (100
+                                        * maximum_frequency_ratio(self.pixel_size_horizontal.value,
+                                                                  POINT_SEP,
+                                                                  NUM_PINS,
+                                                                  horizontal_line_length,
+                                                                  contrast_frequency))
 
             for x in range(roi.width):
                 for y in range(roi.height):
                     if x <= xmax:
                         profile = roi.pixel_array[y, x:x + horizontal_line_length]
                         if np.count_nonzero(profile >= line_min_vals) >= NUM_PINS:
-                            if self.resolution_type.value == "FFT":
-                                contrast = fft_contrast(profile,
-                                                        self.pixel_size_horizontal.value,
-                                                        contrast_frequency)
-                            else:
-                                contrast = get_contrast(profile)
+                            contrast = fft_contrast(profile,
+                                                    self.pixel_size_horizontal.value,
+                                                    contrast_frequency)
                             if contrast > horizontal_max_contrast:
                                 horizontal_max_contrast = contrast
                                 horizontal_max_position = x, y
                     if y <= ymax:
                         profile = roi.pixel_array[y:y + vertical_line_length, x]
                         if np.count_nonzero(profile >= line_min_vals) >= NUM_PINS:
-                            if self.resolution_type.value == "FFT":
-                                contrast = fft_contrast(profile,
-                                                        self.pixel_size_vertical.value,
-                                                        contrast_frequency)
-                            else:
-                                contrast = get_contrast(profile)
+                            contrast = fft_contrast(profile,
+                                                    self.pixel_size_vertical.value,
+                                                    contrast_frequency)
                             if contrast > vertical_max_contrast:
                                 vertical_max_contrast = contrast
                                 vertical_max_position = x, y
@@ -432,16 +332,12 @@ class MedACRResolution(PhantomModule):
             if (self.horizontal_line.roi is None
                     or self.vertical_line.roi is None):
                 return
-            elif self.resolution_type.value == "FFT":
-                horizontal_max_contrast = fft_contrast(self.horizontal_line.roi.profile,  # pyright: ignore[reportArgumentType]
-                                                       self.pixel_size_horizontal.value,
-                                                       contrast_frequency)
-                vertical_max_contrast = fft_contrast(self.vertical_line.roi.profile,  # pyright: ignore[reportArgumentType]
-                                                     self.pixel_size_vertical.value,
-                                                     contrast_frequency)
-            else:
-                horizontal_max_contrast = get_contrast(self.horizontal_line.roi.profile)  # pyright: ignore[reportArgumentType]
-                vertical_max_contrast = get_contrast(self.vertical_line.roi.profile)  # pyright: ignore[reportArgumentType]
+            horizontal_max_contrast = fft_contrast(self.horizontal_line.roi.profile,  # pyright: ignore[reportArgumentType]
+                                                   self.pixel_size_horizontal.value,
+                                                   contrast_frequency)
+            vertical_max_contrast = fft_contrast(self.vertical_line.roi.profile,  # pyright: ignore[reportArgumentType]
+                                                 self.pixel_size_vertical.value,
+                                                 contrast_frequency)
 
         h_contrast = 100 * horizontal_max_contrast
         v_contrast = 100 * vertical_max_contrast
