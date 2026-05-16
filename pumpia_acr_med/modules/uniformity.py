@@ -5,16 +5,16 @@ import numpy as np
 from scipy.signal import convolve2d
 
 from pumpia.module_handling.modules import PhantomModule
-from pumpia.module_handling.in_outs.roi_ios import InputEllipseROI
-from pumpia.module_handling.in_outs.viewer_ios import MonochromeDicomViewerIO
-from pumpia.module_handling.in_outs.simple import (PercInput,
-                                                   BoolInput,
-                                                   FloatOutput,
-                                                   IntOutput)
+from pumpia.module_handling.fields.roi_fields import EllipseROIField
+from pumpia.module_handling.fields.viewer_fields import MonochromeDicomViewerField
+from pumpia.module_handling.fields.simple import (PercField,
+                                                  FloatField,
+                                                  BoolField,
+                                                  IntField)
 from pumpia.image_handling.roi_structures import EllipseROI
 from pumpia.file_handling.dicom_structures import Series, Instance
 
-from pumpia_acr_med.med_acr_context import MedACRContextManagerGenerator, MedACRContext
+from pumpia_acr_med.med_acr_context import MedACRContextManager, MedACRContext
 
 LOW_PASS_KERNEL = np.array([[1, 2, 1], [2, 4, 2], [1, 2, 1]]) / 16
 
@@ -23,36 +23,38 @@ class MedACRUniformity(PhantomModule):
     """
     Integral uniformity module for medium ACR phantom.
     """
-    context_manager_generator = MedACRContextManagerGenerator()
+    context_manager = MedACRContextManager()
     show_draw_rois_button = True
     show_analyse_button = True
-    name = "Uniformity"
+    title = "Uniformity"
 
-    viewer = MonochromeDicomViewerIO(row=0, column=0)
+    viewer = MonochromeDicomViewerField(row=0, column=0)
 
-    size = PercInput(70, verbose_name="Size (%)")
-    kernel_bool = BoolInput(verbose_name="Apply Low Pass Kernel")
+    size = PercField(70, verbose_name="Size (%)")
+    kernel_bool = BoolField(verbose_name="Apply Low Pass Kernel")
 
-    slice_used = IntOutput()
-    uniformity = FloatOutput(verbose_name="Uniformity (%)", reset_on_analysis=True)
+    slice_used = IntField(read_only=True)
+    uniformity = FloatField(verbose_name="Uniformity (%)",
+                            reset_on_analysis=True,
+                            read_only=True)
 
-    uniformity_roi = InputEllipseROI("Uniformity ROI")
+    uniformity_roi = EllipseROIField("Uniformity ROI")
 
     def draw_rois(self, context: MedACRContext, batch: bool = False) -> None:
         if isinstance(self.viewer.image, Instance):
             image = self.viewer.image
         elif isinstance(self.viewer.image, Series):
             if context.inserts_slice == 10:
-                self.slice_used.value = 4
+                self.slice_used = 4
                 image = self.viewer.image.instances[4]
             else:
-                self.slice_used.value = 6
+                self.slice_used = 6
                 image = self.viewer.image.instances[6]
         else:
             return
 
         self.viewer.load_image(image)
-        factor = self.size.value / 100
+        factor = self.size / 100
         a = round(factor * context.x_length / 2)
         b = round(factor * context.y_length / 2)
         self.uniformity_roi.register_roi(EllipseROI(image,
@@ -62,7 +64,7 @@ class MedACRUniformity(PhantomModule):
                                                     b,
                                                     slice_num=image.current_slice))
 
-    def post_roi_register(self, roi_input: InputEllipseROI):
+    def post_roi_register(self, roi_input: EllipseROIField):
         if (roi_input == self.uniformity_roi
             and self.uniformity_roi.roi is not None
                 and self.manager is not None):
@@ -74,7 +76,7 @@ class MedACRUniformity(PhantomModule):
     def analyse(self, batch: bool = False):
         if self.uniformity_roi.roi is not None:
             roi = self.uniformity_roi.roi
-            if self.kernel_bool.value:
+            if self.kernel_bool:
                 array = roi.image.array[0]
                 array = convolve2d(array, LOW_PASS_KERNEL, mode="same")
                 mask = roi.mask
@@ -84,5 +86,5 @@ class MedACRUniformity(PhantomModule):
 
             max_val = max(pixel_values)
             min_val = min(pixel_values)
-            uniformity = 100 * (1 - ((max_val - min_val) / (max_val + min_val)))  # type: ignore
-            self.uniformity.value = uniformity
+            uniformity = 100 * (1 - ((max_val - min_val) / (max_val + min_val)))
+            self.uniformity = uniformity

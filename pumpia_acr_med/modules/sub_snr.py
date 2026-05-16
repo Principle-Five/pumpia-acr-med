@@ -6,67 +6,80 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from pumpia.module_handling.modules import PhantomModule
-from pumpia.module_handling.in_outs.roi_ios import InputEllipseROI
-from pumpia.module_handling.in_outs.viewer_ios import MonochromeDicomViewerIO
-from pumpia.module_handling.in_outs.simple import (PercInput,
-                                                   FloatInput,
-                                                   BoolInput,
-                                                   FloatOutput,
-                                                   IntOutput)
+from pumpia.module_handling.fields.roi_fields import EllipseROIField
+from pumpia.module_handling.fields.viewer_fields import MonochromeDicomViewerField
+from pumpia.module_handling.fields.simple import (PercField,
+                                                  FloatField,
+                                                  BoolField,
+                                                  IntField)
 from pumpia.image_handling.roi_structures import EllipseROI
 from pumpia.file_handling.dicom_structures import Series, Instance
 from pumpia.file_handling.dicom_tags import MRTags
 
-from pumpia_acr_med.med_acr_context import MedACRContextManagerGenerator, MedACRContext
+from pumpia_acr_med.med_acr_context import MedACRContextManager, MedACRContext
 
 
 class MedACRSubSNR(PhantomModule):
     """
     Module for subtraction method SNR on medium ACR phantom.
     """
-    context_manager_generator = MedACRContextManagerGenerator()
+    context_manager = MedACRContextManager()
     show_draw_rois_button = True
     show_analyse_button = True
-    name = "Subtraction SNR"
+    title = "Subtraction SNR"
 
-    viewer1 = MonochromeDicomViewerIO(row=0, column=0)
-    viewer2 = MonochromeDicomViewerIO(row=0, column=1, allow_changing_rois=False)
+    viewer1 = MonochromeDicomViewerField(row=0, column=0)
+    viewer2 = MonochromeDicomViewerField(row=0, column=1, allow_changing_rois=False)
 
-    size = PercInput(70, verbose_name="Size (%)")
-    ref_bandwidth = FloatInput(1, verbose_name="Reference Bandwidth (Hz/px)")
-    bw_cor_bool = BoolInput(verbose_name="Bandwidth Correction")
-    pix_size_bool = BoolInput(verbose_name="Pixel Size Correction")
-    avg_cor_bool = BoolInput(verbose_name="Averages Correction")
-    pe_cor_bool = BoolInput(verbose_name="Phase Encode Correction")
+    size = PercField(70, verbose_name="Size (%)")
+    ref_bandwidth = FloatField(1, verbose_name="Reference Bandwidth (Hz/px)")
+    bw_cor_bool = BoolField(verbose_name="Bandwidth Correction")
+    pix_size_bool = BoolField(verbose_name="Pixel Size Correction")
+    avg_cor_bool = BoolField(verbose_name="Averages Correction")
+    pe_cor_bool = BoolField(verbose_name="Phase Encode Correction")
 
-    slice_used = IntOutput()
-    im_bw = FloatOutput(verbose_name="Image Bandwidth (Hz/px)", reset_on_analysis=True)
-    pixel_size_cor = FloatOutput(verbose_name="Pixel Size Correction", reset_on_analysis=True)
-    pe_cor = FloatOutput(verbose_name="Phase Encode Correction", reset_on_analysis=True)
-    avg_cor = FloatOutput(verbose_name="Averages Correction", reset_on_analysis=True)
-    signal = FloatOutput(reset_on_analysis=True)
-    noise = FloatOutput(reset_on_analysis=True)
-    snr = FloatOutput(verbose_name="SNR", reset_on_analysis=True)
-    cor_snr = FloatOutput(verbose_name="Corrected SNR", reset_on_analysis=True)
+    slice_used = IntField(read_only=True)
+    im_bw = FloatField(verbose_name="Image Bandwidth (Hz/px)",
+                       reset_on_analysis=True,
+                       read_only=True)
+    pixel_size_cor = FloatField(verbose_name="Pixel Size Correction",
+                                reset_on_analysis=True,
+                                read_only=True)
+    pe_cor = FloatField(verbose_name="Phase Encode Correction",
+                        reset_on_analysis=True,
+                        read_only=True)
+    avg_cor = FloatField(verbose_name="Averages Correction",
+                         reset_on_analysis=True,
+                         read_only=True)
+    signal = FloatField(reset_on_analysis=True,
+                        read_only=True)
+    noise = FloatField(reset_on_analysis=True,
+                       read_only=True)
+    snr = FloatField(verbose_name="SNR",
+                     reset_on_analysis=True,
+                     read_only=True)
+    cor_snr = FloatField(verbose_name="Corrected SNR",
+                         reset_on_analysis=True,
+                         read_only=True)
 
-    signal_roi1 = InputEllipseROI("SNR ROI1")
-    signal_roi2 = InputEllipseROI("SNR ROI2", allow_manual_draw=False)
+    signal_roi1 = EllipseROIField("SNR ROI1")
+    signal_roi2 = EllipseROIField("SNR ROI2", allow_manual_draw=False)
 
     def draw_rois(self, context: MedACRContext, batch: bool = False) -> None:
         if isinstance(self.viewer1.image, Instance):
             image = self.viewer1.image
         elif isinstance(self.viewer1.image, Series):
             if context.inserts_slice == 10:
-                self.slice_used.value = 4
+                self.slice_used = 4
                 image = self.viewer1.image.instances[4]
             else:
-                self.slice_used.value = 6
+                self.slice_used = 6
                 image = self.viewer1.image.instances[6]
         else:
             return
 
         self.viewer1.load_image(image)
-        factor = self.size.value / 100
+        factor = self.size / 100
         a = round(factor * context.x_length / 2)
         b = round(factor * context.y_length / 2)
         self.signal_roi1.register_roi(EllipseROI(image,
@@ -76,7 +89,7 @@ class MedACRSubSNR(PhantomModule):
                                                  b,
                                                  slice_num=image.current_slice))
 
-    def post_roi_register(self, roi_input: InputEllipseROI):
+    def post_roi_register(self, roi_input: EllipseROIField):
         if (roi_input == self.signal_roi1
             and self.signal_roi1.roi is not None
                 and self.manager is not None):
@@ -84,7 +97,7 @@ class MedACRSubSNR(PhantomModule):
             if isinstance(self.viewer2.image, Instance):
                 image = self.viewer2.image
             elif isinstance(self.viewer2.image, Series):
-                if self.slice_used.value == 4:
+                if self.slice_used == 4:
                     image = self.viewer2.image.instances[4]
                 else:
                     image = self.viewer2.image.instances[6]
@@ -111,13 +124,13 @@ class MedACRSubSNR(PhantomModule):
             roi_sub = np.array(roi1.pixel_values) - np.array(roi2.pixel_values)
             sum_roi = np.mean(roi_sum)
             if isinstance(sum_roi, float):
-                self.signal.value = sum_roi
+                self.signal = sum_roi
             roi_noise = np.std(roi_sub) / math.sqrt(2)
             if isinstance(roi_noise, float):
-                self.noise.value = roi_noise
+                self.noise = roi_noise
             snr = sum_roi / roi_noise
             if isinstance(snr, float):
-                self.snr.value = snr
+                self.snr = snr
 
             cor_snr = snr
 
@@ -128,61 +141,68 @@ class MedACRSubSNR(PhantomModule):
                 avg_cor = 1
                 pe_cor = 1
 
-                if self.pix_size_bool.value:
-                    pix_size = image.pixel_size
+                if (self.pix_size_bool
+                    and not (image.slice_thickness is None
+                             or image.pixel_spacing is None)):
+                    pix_size = image.slice_thickness, *image.pixel_spacing
+                    self.logger.info("pixel size = %s", pix_size)
                     px_cor = 1 / math.prod(pix_size)
-                    self.pixel_size_cor.value = px_cor
+                    self.pixel_size_cor = px_cor
 
-                if self.bw_cor_bool.value:
-                    ref_bw = self.ref_bandwidth.value
+                if self.bw_cor_bool:
+                    ref_bw = self.ref_bandwidth
                     try:
-                        im_bw = image.get_tag(MRTags.PixelBandwidth)
+                        im_bw = image.get_value(MRTags.PixelBandwidth, True)
+                        self.logger.info("image bandwidth = %s", im_bw)
                         try:
-                            im_bw = float(im_bw)  # type: ignore
+                            im_bw = float(im_bw)
                         except (ValueError, TypeError):
                             im_bw = ref_bw
                     except KeyError:
+                        self.logger.info("image bandwidth not found")
                         im_bw = ref_bw
-                    self.im_bw.value = im_bw
+                    self.im_bw = im_bw
                     bw_cor = math.sqrt(im_bw / ref_bw)
 
-                if self.avg_cor_bool.value:
+                if self.avg_cor_bool:
                     try:
-                        im_av = image.get_tag(MRTags.NumberOfAverages)
+                        im_av = image.get_value(MRTags.NumberOfAverages, True)
+                        self.logger.info("image averages = %s", im_av)
                         try:
-                            im_av = float(im_av)  # type: ignore
+                            im_av = float(im_av)
                         except (ValueError, TypeError):
                             im_av = 1
                     except KeyError:
                         im_av = 1
+                        self.logger.info("image averages not found")
                     avg_cor = 1 / math.sqrt(im_av)
-                    self.avg_cor.value = avg_cor
+                    self.avg_cor = avg_cor
 
-                if self.pe_cor_bool.value:
+                if self.pe_cor_bool:
                     try:
                         im_pe = float(
-                            image.get_tag(MRTags.NumberOfPhaseEncodingSteps))  # type: ignore
+                            image.get_value(MRTags.NumberOfPhaseEncodingSteps, True))
+                        self.logger.info("phase encode steps = %s", im_pe)
                     except (KeyError, ValueError, TypeError):
-                        im_pe = 1
-
-                    if im_pe == 1:
                         try:
-                            if image.get_tag(MRTags.InPlanePhaseEncodingDirection) == "ROW":
+                            if image.get_value(MRTags.InPlanePhaseEncodingDirection, True) == "ROW":
                                 num = int(
-                                    image.get_tag(MRTags.Rows))  # type: ignore
+                                    image.get_value(MRTags.Rows, True))
                             else:
                                 num = int(
-                                    image.get_tag(MRTags.Columns))  # type: ignore
+                                    image.get_value(MRTags.Columns, True))
                             im_pe = float(
-                                image.get_tag(MRTags.PercentSampling)) * num  # type: ignore
+                                image.get_value(MRTags.PercentSampling, True)) * num
+                            self.logger.info("phase encode steps = %s", im_pe)
                         except (KeyError, ValueError, TypeError):
                             im_pe = 1
+                            self.logger.info("phase encode steps not found")
                     pe_cor = 1 / math.sqrt(im_pe)
-                    self.pe_cor.value = pe_cor
+                    self.pe_cor = pe_cor
 
                 cor_snr = snr * px_cor * bw_cor * avg_cor * pe_cor
 
-            self.cor_snr.value = float(cor_snr)
+            self.cor_snr = float(cor_snr)
 
     def load_commands(self):
         self.register_command("Show Subtraction Image", self.show_sub_image)

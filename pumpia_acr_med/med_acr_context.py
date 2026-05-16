@@ -13,9 +13,7 @@ from pumpia.module_handling.manager import Manager
 from pumpia.image_handling.roi_structures import RectangleROI, PointROI
 from pumpia.utilities.typing import DirectionType, SideType
 from pumpia.widgets.typing import ScreenUnits, Cursor, Padding, Relief, TakeFocusValue
-from pumpia.widgets.context_managers import (PhantomContextManager,
-                                             AutoPhantomManager,
-                                             PhantomContextManagerGenerator,
+from pumpia.widgets.context_managers import (AutoPhantomManager,
                                              side_map,
                                              inv_side_map,
                                              side_opts)
@@ -59,14 +57,14 @@ class MedACRContext(PhantomContext):
         self.inserts_slice: Literal[0] | Literal[10] = inserts_slice
 
 
-class MedACRContextManager(PhantomContextManager):
+class MedACRContextManager(AutoPhantomManager):
     """
     Context Manager for Medium ACR Phantom.
     """
     @overload
     def __init__(self,
-                 parent: tk.Misc,
-                 manager: Manager,
+                 parent: tk.Misc | None = None,
+                 manager: Manager | None = None,
                  mode: Literal["auto", "manual"] = "auto",
                  sensitivity: int = 3,
                  top_perc: int = 95,
@@ -98,8 +96,8 @@ class MedACRContextManager(PhantomContextManager):
 
     @overload
     def __init__(self,
-                 parent: tk.Misc,
-                 manager: Manager,
+                 parent: tk.Misc | None = None,
+                 manager: Manager | None = None,
                  mode: Literal["auto", "manual"] = "auto",
                  sensitivity: int = 3,
                  top_perc: int = 95,
@@ -112,8 +110,8 @@ class MedACRContextManager(PhantomContextManager):
                  **kw) -> None: ...
 
     def __init__(self,
-                 parent: tk.Misc,
-                 manager: Manager,
+                 parent: tk.Misc | None = None,
+                 manager: Manager | None = None,
                  mode: Literal["auto", "manual"] = "auto",
                  sensitivity: int = 3,
                  top_perc: int = 95,
@@ -127,21 +125,47 @@ class MedACRContextManager(PhantomContextManager):
         kw["shape"] = "ellipse"
         super().__init__(parent,
                          manager=manager,
+                         mode=mode,
+                         sensitivity=sensitivity,
+                         top_perc=top_perc,
+                         iterations=iterations,
+                         cull_perc=cull_perc,
+                         bubble_offset=bubble_offset,
+                         bubble_side=bubble_side,
                          direction=direction,
                          text=text,
                          **kw)
+        self.auto_phantom_manager: AutoPhantomManager
+        self.inserts_frame: ttk.Labelframe
+
+        self.inserts_slice_var: tk.StringVar
+        self.inserts_slice_combo: ttk.Combobox
+        self.inserts_slice_label: ttk.Label
+
+        self.res_insert_var: tk.StringVar
+        self.res_insert_combo: ttk.Combobox
+        self.res_insert_label: ttk.Label
+
+        self.circle_insert_var: tk.StringVar
+        self.circle_insert_combo: ttk.Combobox
+        self.circle_insert_label: ttk.Label
+
+        self.show_boxes_var: tk.BooleanVar
+        self.show_boxes_button: ttk.Checkbutton
+
+    def _complete_setup(self):
         self.auto_phantom_manager = AutoPhantomManager(self,
-                                                       manager=manager,
-                                                       mode=mode,
-                                                       sensitivity=sensitivity,
-                                                       top_perc=top_perc,
-                                                       iterations=iterations,
-                                                       cull_perc=cull_perc,
-                                                       bubble_offset=bubble_offset,
-                                                       bubble_side=bubble_side,
-                                                       direction=direction,
+                                                       manager=self.manager,
+                                                       mode=self.mode,
+                                                       sensitivity=self.sensitivity,
+                                                       top_perc=self.top_perc,
+                                                       iterations=self.iterations,
+                                                       cull_perc=self.cull_perc,
+                                                       bubble_offset=self.bubble_offset,
+                                                       bubble_side=self.bubble_side,
+                                                       direction=self.direction,
                                                        text="Bound Box Options",
-                                                       **kw)
+                                                       **self.kw)
 
         self.inserts_frame = ttk.Labelframe(self, text="Inserts")
 
@@ -222,13 +246,15 @@ class MedACRContextManager(PhantomContextManager):
                                  boundary_context.xmax,
                                  boundary_context.ymin,
                                  boundary_context.ymax,
-                                 inserts_slice,  # type: ignore
+                                 inserts_slice,
                                  res_insert_side,
                                  circle_insert_side)
 
-        pixel_size = inserts_image.pixel_size
-        pixel_height = pixel_size[1]
-        pixel_width = pixel_size[2]
+        pixel_size = image.pixel_spacing
+        if pixel_size is None:
+            raise ValueError("Image has no pixel spacing.")
+        pixel_height = pixel_size[0]
+        pixel_width = pixel_size[1]
 
         inserts_image_array = inserts_image.array[0]
 
@@ -341,7 +367,6 @@ class MedACRContextManager(PhantomContextManager):
                                    slice_num=inserts_slice,
                                    replace=True,
                                    name="Top")
-            self.manager.add_roi(top_roi)
 
             bottom_roi = RectangleROI(image,
                                       bottom_box_xmin,
@@ -351,7 +376,6 @@ class MedACRContextManager(PhantomContextManager):
                                       slice_num=inserts_slice,
                                       replace=True,
                                       name="Bottom")
-            self.manager.add_roi(bottom_roi)
 
             left_roi = RectangleROI(image,
                                     left_box_xmin,
@@ -361,7 +385,6 @@ class MedACRContextManager(PhantomContextManager):
                                     slice_num=inserts_slice,
                                     replace=True,
                                     name="Left")
-            self.manager.add_roi(left_roi)
 
             right_roi = RectangleROI(image,
                                      right_box_xmin,
@@ -371,10 +394,9 @@ class MedACRContextManager(PhantomContextManager):
                                      slice_num=inserts_slice,
                                      replace=True,
                                      name="Right")
-            self.manager.add_roi(right_roi)
 
-            sec_box_width = five_box_xmax - five_box_xmin  # type: ignore
-            sec_box_height = five_box_ymax - five_box_ymin  # type: ignore
+            sec_box_width = five_box_xmax - five_box_xmin
+            sec_box_height = five_box_ymax - five_box_ymin
 
             five_roi = RectangleROI(image,
                                     five_box_xmin,
@@ -384,7 +406,6 @@ class MedACRContextManager(PhantomContextManager):
                                     slice_num=inserts_slice,
                                     replace=True,
                                     name="Diagonal 1")
-            self.manager.add_roi(five_roi)
 
             six_roi = RectangleROI(image,
                                    six_box_xmin,
@@ -394,7 +415,6 @@ class MedACRContextManager(PhantomContextManager):
                                    slice_num=inserts_slice,
                                    replace=True,
                                    name="Diagonal 2")
-            self.manager.add_roi(six_roi)
 
             cent = PointROI(image,
                             round(boundary_context.xcent),
@@ -402,8 +422,15 @@ class MedACRContextManager(PhantomContextManager):
                             slice_num=inserts_slice,
                             name="Centre",
                             replace=True)
-            self.manager.add_roi(cent)
-            self.manager.update_viewers(image.instances[inserts_slice])
+            if self.manager is not None:
+                self.manager.add_roi(top_roi)
+                self.manager.add_roi(bottom_roi)
+                self.manager.add_roi(left_roi)
+                self.manager.add_roi(right_roi)
+                self.manager.add_roi(five_roi)
+                self.manager.add_roi(six_roi)
+                self.manager.add_roi(cent)
+                self.manager.update_viewers(image.instances[inserts_slice])
 
         self.res_insert_var.set(inv_side_map[res_insert_side])
         self.circle_insert_var.set(inv_side_map[circle_insert_side])
@@ -412,53 +439,6 @@ class MedACRContextManager(PhantomContextManager):
                              boundary_context.xmax,
                              boundary_context.ymin,
                              boundary_context.ymax,
-                             inserts_slice,  # type: ignore
+                             inserts_slice,
                              res_insert_side,
                              circle_insert_side)
-
-
-class MedACRContextManagerGenerator(PhantomContextManagerGenerator[MedACRContextManager]):
-    """
-    Generator for MedACRContextManager.
-    """
-    context_manager_type = MedACRContextManager
-
-    @overload
-    def __init__(self,
-                 *,
-                 mode: Literal["auto", "manual"] = "auto",
-                 sensitivity: int = 3,
-                 top_perc: int = 95,
-                 iterations: int = 2,
-                 cull_perc: int = 80,
-                 bubble_offset: int = 0,
-                 bubble_side: SideType = "top",
-                 direction: DirectionType = "Vertical",
-                 text: float | str = "Medium ACR Context",
-                 border: ScreenUnits = ...,
-                 borderwidth: ScreenUnits = ...,  # undocumented
-                 class_: str = "",
-                 cursor: Cursor = "",
-                 height: ScreenUnits = 0,
-                 labelanchor: Literal["nw", "n", "ne",
-                                      "en", "e", "es",
-                                      "se", "s", "sw",
-                                      "ws", "w", "wn"] = ...,
-                 labelwidget: tk.Misc = ...,
-                 name: str = ...,
-                 padding: Padding = ...,
-                 relief: Relief = ...,  # undocumented
-                 style: str = "",
-                 takefocus: TakeFocusValue = "",
-                 underline: int = -1,
-                 width: ScreenUnits = 0,
-                 ) -> None: ...
-
-    @overload
-    def __init__(self,
-                 **kw) -> None: ...
-
-    def __init__(self,
-                 **kw) -> None:
-        kw["shape"] = "ellipse"
-        super().__init__(**kw)

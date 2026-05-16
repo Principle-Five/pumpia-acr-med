@@ -4,54 +4,52 @@ Ghosting module for medium ACR phantom.
 This does not follow ACR guidelines
 """
 from pumpia.module_handling.modules import PhantomModule
-from pumpia.module_handling.in_outs.roi_ios import InputEllipseROI, InputRectangleROI
-from pumpia.module_handling.in_outs.viewer_ios import MonochromeDicomViewerIO
-from pumpia.module_handling.in_outs.simple import (PercInput,
-                                                   FloatOutput,
-                                                   IntOutput)
+from pumpia.module_handling.fields.roi_fields import EllipseROIField, RectangleROIField
+from pumpia.module_handling.fields.viewer_fields import MonochromeDicomViewerField
+from pumpia.module_handling.fields.simple import PercField, FloatField, IntField
 from pumpia.image_handling.roi_structures import EllipseROI, RectangleROI
 from pumpia.file_handling.dicom_structures import Series, Instance
 
-from pumpia_acr_med.med_acr_context import MedACRContextManagerGenerator, MedACRContext
+from pumpia_acr_med.med_acr_context import MedACRContextManager, MedACRContext
 
 
 class MedACRGhosting(PhantomModule):
     """
     Ghosting module for medium ACR phantom.
     """
-    context_manager_generator = MedACRContextManagerGenerator()
+    context_manager = MedACRContextManager()
     show_draw_rois_button = True
     show_analyse_button = True
-    name = "Ghosting"
+    title = "Ghosting"
 
-    viewer = MonochromeDicomViewerIO(row=0, column=0)
+    viewer = MonochromeDicomViewerField(row=0, column=0)
 
-    size = PercInput(70, verbose_name="Size (%)")
+    size = PercField(70, verbose_name="Size (%)")
 
-    slice_used = IntOutput()
-    ghosting = FloatOutput(verbose_name="Ghosting (%)", reset_on_analysis=True)
+    slice_used = IntField(read_only=True)
+    ghosting = FloatField(verbose_name="Ghosting (%)", reset_on_analysis=True, read_only=True)
 
-    phantom_roi = InputEllipseROI("Phantom ROI")
-    top_roi = InputRectangleROI("Top ROI")
-    bottom_roi = InputRectangleROI("Bottom ROI")
-    left_roi = InputRectangleROI("Left ROI")
-    right_roi = InputRectangleROI("Right ROI")
+    phantom_roi = EllipseROIField("Phantom ROI")
+    top_roi = RectangleROIField("Top ROI")
+    bottom_roi = RectangleROIField("Bottom ROI")
+    left_roi = RectangleROIField("Left ROI")
+    right_roi = RectangleROIField("Right ROI")
 
     def draw_rois(self, context: MedACRContext, batch: bool = False) -> None:
         if isinstance(self.viewer.image, Instance):
             image = self.viewer.image
         elif isinstance(self.viewer.image, Series):
             if context.inserts_slice == 10:
-                self.slice_used.value = 4
+                self.slice_used = 4
                 image = self.viewer.image.instances[4]
             else:
-                self.slice_used.value = 6
+                self.slice_used = 6
                 image = self.viewer.image.instances[6]
         else:
             return
 
         self.viewer.load_image(image)
-        factor = self.size.value / 100
+        factor = self.size / 100
         a = round(factor * context.x_length / 2)
         b = round(factor * context.y_length / 2)
         phant_roi = EllipseROI(image,
@@ -112,18 +110,11 @@ class MedACRGhosting(PhantomModule):
                              slice_num=image.current_slice)
         self.right_roi.register_roi(right)
 
-    def post_roi_register(self, roi_input: InputEllipseROI):
+    def post_roi_register(self, roi_input: EllipseROIField | RectangleROIField):
         if (roi_input in self.rois
             and roi_input.roi is not None
                 and self.manager is not None):
             self.manager.add_roi(roi_input.roi)
-
-    def link_rois_viewers(self):
-        self.phantom_roi.viewer = self.viewer
-        self.top_roi.viewer = self.viewer
-        self.bottom_roi.viewer = self.viewer
-        self.left_roi.viewer = self.viewer
-        self.right_roi.viewer = self.viewer
 
     def analyse(self, batch: bool = False):
         if (self.phantom_roi.roi is not None
@@ -144,4 +135,4 @@ class MedACRGhosting(PhantomModule):
                 and isinstance(left, float)
                     and isinstance(right, float)):
 
-                self.ghosting.value = 100 * abs(((top + bottom) - (left + right)) / (2 * signal))
+                self.ghosting = 100 * abs(((top + bottom) - (left + right)) / (2 * signal))
