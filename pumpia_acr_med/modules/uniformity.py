@@ -86,5 +86,5 @@ class MedACRUniformity(PhantomModule):
 
             max_val = max(pixel_values)
             min_val = min(pixel_values)
-            uniformity = 100 * (1 - ((max_val - min_val) / (max_val + min_val)))
+            uniformity = 100 * (1 - ((max_val - min_val) / (max_val + min_val)))  # pyright: ignore[reportOperatorIssue]
             self.uniformity = uniformity

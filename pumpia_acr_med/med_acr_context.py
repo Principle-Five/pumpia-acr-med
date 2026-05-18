@@ -19,9 +19,11 @@ from pumpia.widgets.context_managers import (AutoPhantomManager,
                                              side_opts)
 from pumpia.module_handling.context import PhantomContext
 
-inserts_slice_map: dict[str, int] = {"1": 0,
-                                     "11": 10}
-inv_inserts_slice_map: dict[int, str] = {v: k for k, v in inserts_slice_map.items()}
+inserts_slice_map: dict[Literal["1", "11"], Literal[0, 10]] = {"1": 0,
+                                                               "11": 10}
+inv_inserts_slice_map: dict[Literal[0, 10], Literal["1", "11"]] = {v: k
+                                                                   for k, v in
+                                                                   inserts_slice_map.items()}
 inserts_slice_opts = list(inserts_slice_map.keys())
 
 # offsets in mm (dicom standard units)
@@ -172,7 +174,7 @@ class MedACRContextManager(AutoPhantomManager):
         self.inserts_slice_var = tk.StringVar(self, inv_inserts_slice_map[0])
         self.inserts_slice_combo = ttk.Combobox(self.inserts_frame,
                                                 textvariable=self.inserts_slice_var,
-                                                values=inserts_slice_opts,
+                                                values=tuple(inserts_slice_opts),
                                                 height=4,
                                                 state="readonly")
         self.inserts_slice_label = ttk.Label(self.inserts_frame, text="Inserts Slice")
@@ -220,9 +222,8 @@ class MedACRContextManager(AutoPhantomManager):
             raise ValueError("Expected ACR Image with 11 slices")
 
         if self.auto_phantom_manager.mode_var.get() == "fine tune":
-            inserts_slice = inserts_slice_map[self.inserts_slice_var.get()]
+            inserts_slice = inserts_slice_map[self.inserts_slice_var.get()]  # pyright: ignore[reportArgumentType]
         else:
-
             min_slice = np.argmin(image.z_profile)
 
             if min_slice == 4:
@@ -330,7 +331,7 @@ class MedACRContextManager(AutoPhantomManager):
             else:
                 circle_insert_side = "left"
 
-        elif res_insert_opp == 2 or res_insert_opp == 3:
+        else:
             five_box_ymin = round(ycent - five_box_offset_y - five_box_height)
             five_box_ymax = round(ycent - five_box_offset_y) + 1
             six_box_ymin = round(ycent + five_box_offset_y)
