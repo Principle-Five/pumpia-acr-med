@@ -211,6 +211,9 @@ class MedACRSubSNR(PhantomModule):
         """
         Shows the subtraction image
         """
+        if self.signal_roi1.roi is None or self.signal_roi2.roi is None:
+            self.create_rois()
+
         if self.signal_roi1.roi is not None and self.signal_roi2.roi is not None:
             roi1 = self.signal_roi1.roi
             roi2 = self.signal_roi2.roi

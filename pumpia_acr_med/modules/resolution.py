@@ -336,13 +336,13 @@ class MedACRResolution(PhantomModule):
         self.horizontal_line.register_roi(LineROI(image,
                                                   box_xmin,
                                                   box_ymin,
-                                                  box_xmin + horizontal_line_length,
+                                                  box_xmin + horizontal_line_length - 1,
                                                   box_ymin))
         self.vertical_line.register_roi(LineROI(image,
                                                 box_xmin,
                                                 box_ymin,
                                                 box_xmin,
-                                                box_ymin + vertical_line_length))
+                                                box_ymin + vertical_line_length - 1))
 
     def post_roi_register(self, roi_input: LineROIField | RectangleROIField):
         if (roi_input.roi is not None
@@ -354,6 +354,23 @@ class MedACRResolution(PhantomModule):
         horizontal_max_contrast: float = 0
         vertical_max_contrast: float = 0
         contrast_frequency = 1 / (2 * POINT_SEP)
+        horizontal_line_length = math.floor(2
+                                            * NUM_PINS
+                                            * POINT_SEP
+                                            / self.pixel_size_horizontal)
+
+        if self.resolution_type == "FFT":
+            self.best_contrast = 100 * maximum_frequency_ratio(self.pixel_size_horizontal,
+                                                               POINT_SEP,
+                                                               NUM_PINS,
+                                                               horizontal_line_length,
+                                                               contrast_frequency)
+        else:
+            self.best_contrast = 100 * maximum_contrast_ratio(self.pixel_size_horizontal,
+                                                              POINT_SEP,
+                                                              NUM_PINS,
+                                                              horizontal_line_length)
+
         if self.auto_position_lines:
             if self.viewer.image is not None:
                 image = self.viewer.image
@@ -367,10 +384,6 @@ class MedACRResolution(PhantomModule):
 
             horizontal_max_position: tuple[int, int] = 0, 0
             vertical_max_position: tuple[int, int] = 0, 0
-            horizontal_line_length = math.floor(2
-                                                * NUM_PINS
-                                                * POINT_SEP
-                                                / self.pixel_size_horizontal)
             vertical_line_length = math.floor(2
                                               * NUM_PINS
                                               * POINT_SEP
@@ -379,23 +392,16 @@ class MedACRResolution(PhantomModule):
             ymax = roi.height - vertical_line_length
             line_min_vals = np.max(roi.pixel_array) * self.resolution_percentage / 100
 
-            if self.resolution_type == "FFT":
-                self.best_contrast = 100 * maximum_frequency_ratio(self.pixel_size_horizontal,
-                                                                   POINT_SEP,
-                                                                   NUM_PINS,
-                                                                   horizontal_line_length,
-                                                                   contrast_frequency)
-            else:
-                self.best_contrast = 100 * maximum_contrast_ratio(self.pixel_size_horizontal,
-                                                                  POINT_SEP,
-                                                                  NUM_PINS,
-                                                                  horizontal_line_length)
-
             for x in range(roi.width):
                 for y in range(roi.height):
                     if x <= xmax:
                         profile = roi.pixel_array[y, x:x + horizontal_line_length]
-                        if np.count_nonzero(profile >= line_min_vals) >= NUM_PINS:
+                        pin_locs: np.ndarray[tuple[int, ...],
+                                             np.dtypes.BoolDType] = profile >= line_min_vals
+                        within_loc = math.ceil(2 * POINT_SEP / self.pixel_size_horizontal)
+                        total_within = (np.sum(pin_locs[:within_loc])
+                                        + np.sum(pin_locs[-within_loc:]))
+                        if total_within > 2:
                             if self.resolution_type == "FFT":
                                 contrast = fft_contrast(profile,
                                                         self.pixel_size_horizontal,
@@ -407,7 +413,12 @@ class MedACRResolution(PhantomModule):
                                 horizontal_max_position = x, y
                     if y <= ymax:
                         profile = roi.pixel_array[y:y + vertical_line_length, x]
-                        if np.count_nonzero(profile >= line_min_vals) >= NUM_PINS:
+                        pin_locs: np.ndarray[tuple[int, ...],
+                                             np.dtypes.BoolDType] = profile >= line_min_vals
+                        within_loc = math.ceil(2 * POINT_SEP / self.pixel_size_vertical)
+                        total_within = (np.sum(pin_locs[:within_loc])
+                                        + np.sum(pin_locs[-within_loc:]))
+                        if total_within > 2:
                             if self.resolution_type == "FFT":
                                 contrast = fft_contrast(profile,
                                                         self.pixel_size_vertical,
