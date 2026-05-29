@@ -399,9 +399,8 @@ class MedACRResolution(PhantomModule):
                         pin_locs: np.ndarray[tuple[int, ...],
                                              np.dtypes.BoolDType] = profile >= line_min_vals
                         within_loc = math.ceil(2 * POINT_SEP / self.pixel_size_horizontal)
-                        total_within = (np.sum(pin_locs[:within_loc])
-                                        + np.sum(pin_locs[-within_loc:]))
-                        if total_within > 2:
+                        if (np.sum(pin_locs[:within_loc]) >= 1
+                                and np.sum(pin_locs[-within_loc:]) >= 1):
                             if self.resolution_type == "FFT":
                                 contrast = fft_contrast(profile,
                                                         self.pixel_size_horizontal,
@@ -416,9 +415,8 @@ class MedACRResolution(PhantomModule):
                         pin_locs: np.ndarray[tuple[int, ...],
                                              np.dtypes.BoolDType] = profile >= line_min_vals
                         within_loc = math.ceil(2 * POINT_SEP / self.pixel_size_vertical)
-                        total_within = (np.sum(pin_locs[:within_loc])
-                                        + np.sum(pin_locs[-within_loc:]))
-                        if total_within > 2:
+                        if (np.sum(pin_locs[:within_loc]) >= 1
+                                and np.sum(pin_locs[-within_loc:]) >= 1):
                             if self.resolution_type == "FFT":
                                 contrast = fft_contrast(profile,
                                                         self.pixel_size_vertical,
